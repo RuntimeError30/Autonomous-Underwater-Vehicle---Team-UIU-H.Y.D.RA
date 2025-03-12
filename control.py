@@ -65,8 +65,9 @@ class ControlPage(QWidget):
         first_col.addLayout(stackCam_layout)
 
         second_col = QVBoxLayout(self)
+        
         statusWidget = QWidget()
-        statusWidget.setStyleSheet("background: transparent; border: 1px solid #72eeee; border-radius: 5px;")
+        statusWidget.setStyleSheet(" border: 1px solid #72eeee; border-radius: 5px;")
         status_layout = QVBoxLayout(statusWidget)
 
         status_label = QLabel("Status")
