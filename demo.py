@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QVBo
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtCore import QTimer
 import cv2
-from ultralytics import YOLO
+
 
 class MainWindow(QMainWindow):
     def __init__(self):

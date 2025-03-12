@@ -13,7 +13,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("HYD.R.A")
 
         self.light_mode="""QWidget{background-color:#ffffff; color:black; font-family: Montserrat}"""
-        self.dark_mode="""QWidget{background-color:#141416; color:white; font-family: Montserrat}"""
+        self.dark_mode="""QWidget{background-color:#181e1c; color:white; font-family: Montserrat}"""
 
         self.current_mode = "dark"
         self.setStyleSheet(self.dark_mode)
@@ -51,27 +51,27 @@ class MainWindow(QMainWindow):
 
         adminbtn = QPushButton('Admin')
         adminbtn.setStyleSheet("""
-background-color: #F95A00;
-width: 40px;
-padding: 5px;
-border-radius:5px;
-color:white;
-font-size:10px;                 
-""")
+        background-color: #F95A00;
+        width: 40px;
+        padding: 5px;
+        border-radius:5px;
+        color:white;
+        font-size:10px;                 
+        """)
         layout.addWidget(adminbtn)
         layout.addStretch()
         
 
         control_button = QPushButton("Control")
-        control_button.setStyleSheet("background-color: transparent; padding: 10px;")
+        control_button.setStyleSheet("background-color: transparent; padding: 10px; font-size: 10px;")
         control_button.clicked.connect(self.show_control_page)
 
         sensor_button = QPushButton("Sensor")
-        sensor_button.setStyleSheet("background-color: transparent; padding: 10px;")
+        sensor_button.setStyleSheet("background-color: transparent; padding: 10px; font-size: 10px;")
         sensor_button.clicked.connect(self.show_sensor_page)
 
         config_button = QPushButton("Config")
-        config_button.setStyleSheet("background-color: transparent; padding: 10px;")
+        config_button.setStyleSheet("background-color: transparent; padding: 10px; font-size: 10px;")
         config_button.clicked.connect(self.show_config_page)
 
 
@@ -88,7 +88,7 @@ font-size:10px;
         border-radius: 12px; 
         background: #F95A00;
 """)
-        btnicon = QIcon("assets/sun.png")
+        btnicon = QIcon("Autonomous-Underwater-Vehicle---Team-UIU-H.Y.D.RA/assets/sun.png")
         self.toggleModebtn.setIcon(btnicon)
         self.toggleModebtn.clicked.connect(self.toggle_mode)
         layout.addWidget(self.toggleModebtn)
@@ -98,18 +98,18 @@ font-size:10px;
     def toggle_mode(self):
         if self.current_mode == "dark":
             self.setStyleSheet(self.light_mode)
-            self.toggleModebtn.setIcon(QIcon("assets/moon.png"))
+            self.toggleModebtn.setIcon(QIcon("Autonomous-Underwater-Vehicle---Team-UIU-H.Y.D.RA/assets/moon.png"))
             self.toggleModebtn.setStyleSheet("""padding: 4px; border-radius: 12px; background: transparent; border: 1px solid #F95A00;""")
             self.current_mode = "light"
         else:
             self.setStyleSheet(self.dark_mode)
-            self.toggleModebtn.setIcon(QIcon("assets/sun.png"))
+            self.toggleModebtn.setIcon(QIcon("Autonomous-Underwater-Vehicle---Team-UIU-H.Y.D.RA/assets/sun.png"))
             self.toggleModebtn.setStyleSheet("""
         
-        padding: 4px; 
-        border-radius: 12px; 
-        background: #F95A00;
-""")
+            padding: 4px; 
+            border-radius: 12px; 
+            background: #F95A00;
+            """)
             self.current_mode = "dark"
 
 
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     window.resize(1920, 1080)
     window.setStyleSheet("""
     QWidget {
-        background-color: #141416;
+        background-color: #181e1c;
         margin: 0;
         padding: 0;
         font-family: Montserrat;
