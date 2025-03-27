@@ -102,7 +102,7 @@ class ControlPage(QWidget):
 
         # Tasks button section
         tasks_button_section = QWidget(self)
-        tasks_button_section.setFixedSize(250, 100)
+        tasks_button_section.setFixedSize(250, 150)
         tasks_button_section.setStyleSheet(
             "background-color: rgba(114, 238, 238, 40);"
         )
@@ -111,12 +111,20 @@ class ControlPage(QWidget):
         tasks_button_label.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
 
         task1_button = QPushButton("Capture Panorama", self)
-        task1_button.setStyleSheet("font-size: 20px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+        task1_button.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: rgba(114, 238, 238, 40); font-family: Montserrat;")
         task1_button.setFixedSize(200, 40)
+        task1_button.setCursor(Qt.CursorShape.PointingHandCursor)
+
+        task2_button = QPushButton("Length Measurement", self)
+        task2_button.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: rgba(114, 238, 238, 40); margin-top:20px; font-family: Montserrat;")
+        task2_button.setFixedSize(200, 40)
+        task2_button.setCursor(Qt.CursorShape.PointingHandCursor)
+
 
         tasks_button_Layout.addWidget(tasks_button_label, alignment=Qt.AlignmentFlag.AlignCenter)
-        tasks_button_Layout.addStretch()
+
         tasks_button_Layout.addWidget(task1_button, alignment=Qt.AlignmentFlag.AlignCenter)
+        tasks_button_Layout.addWidget(task2_button, alignment=Qt.AlignmentFlag.AlignCenter)
 
         tasks_button_Layout.addStretch()
         direction_task_layout.addWidget(tasks_button_section)
