@@ -43,28 +43,14 @@ class ControlPage(QWidget):
         second_row = QVBoxLayout()
         colfirstRow = QHBoxLayout()
 
-        # Thruster section layout with background
-        movementSpeed_Layout = QVBoxLayout()
-        movementSpeed_Layout.setContentsMargins(10, 10, 10, 10)  # Add padding
-        movementSpeed_Layout.setSpacing(5)
-        
-        # Applying Background and Border using Stylesheet on Parent Widget
-        self.setStyleSheet(
-            """
-            QLabel#thrusterSection {
-                background-color: rgba(114, 238, 238, 40);
-                border: 1px solid #72eeee;
-                padding: 10px;
-            }
-            """
+        # --- Thrusters Left & Right Section ---
+        thruster_section = QWidget(self)
+        thruster_section.setFixedSize(250, 200)
+        thruster_section.setStyleSheet(
+            "background-color: rgba(114, 238, 238, 40);  border-radius: 10px;"
         )
 
-        # Create a dummy QLabel as a container to apply styles
-        thruster_section = QLabel(self)
-        thruster_section.setObjectName("thrusterSection")
-        thruster_section.setFixedSize(250, 200)  # Adjust size as needed
-        thruster_section.setLayout(movementSpeed_Layout)
-
+        movementSpeed_Layout = QVBoxLayout(thruster_section)
         movementSpeed_label = QLabel("Thrusters Left & Right", self)
         movementSpeed_label.setStyleSheet("font-size: 12px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
 
@@ -80,14 +66,101 @@ class ControlPage(QWidget):
         movementSpeedRight = QLabel('1590', self)
         movementSpeedRight.setStyleSheet("font-size: 30px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
 
-        # Add widgets inside the thruster section
         movementSpeed_Layout.addWidget(movementSpeed_label, alignment=Qt.AlignmentFlag.AlignLeft)
         movementSpeed_Layout.addWidget(moveLeft, alignment=Qt.AlignmentFlag.AlignLeft)
         movementSpeed_Layout.addWidget(movementSpeedLeft, alignment=Qt.AlignmentFlag.AlignLeft)
         movementSpeed_Layout.addWidget(movemRight, alignment=Qt.AlignmentFlag.AlignLeft)
         movementSpeed_Layout.addWidget(movementSpeedRight, alignment=Qt.AlignmentFlag.AlignLeft)
 
+
+
+        # --- Thrusters Direction Section ---
+        direction_task_layout = QVBoxLayout()
+
+
+        # --- Thrusters Direction Section ---
+        thruster_direction_section = QWidget(self)
+        thruster_direction_section.setFixedSize(250, 100)
+        thruster_direction_section.setStyleSheet(
+            "background-color: rgba(114, 238, 238, 40);"
+        )
+        
+        thruster_direction_Layout = QVBoxLayout(thruster_direction_section)
+        thruster_direction_label = QLabel("Thrusters Direction", self)
+        thruster_direction_label.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+        moveForward = QLabel('Forward', self)
+        moveForward.setStyleSheet("font-size: 20px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+
+
+        thruster_direction_Layout.addWidget(thruster_direction_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        thruster_direction_Layout.addStretch()
+        thruster_direction_Layout.addWidget(moveForward, alignment=Qt.AlignmentFlag.AlignCenter)
+        thruster_direction_Layout.addStretch()
+
+        direction_task_layout.addWidget(thruster_direction_section)
+        direction_task_layout.addStretch()
+
+        # Tasks button section
+        tasks_button_section = QWidget(self)
+        tasks_button_section.setFixedSize(250, 100)
+        tasks_button_section.setStyleSheet(
+            "background-color: rgba(114, 238, 238, 40);"
+        )
+        tasks_button_Layout = QVBoxLayout(tasks_button_section)
+        tasks_button_label = QLabel("Perform Tasks", self)
+        tasks_button_label.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+
+        task1_button = QPushButton("Capture Panorama", self)
+        task1_button.setStyleSheet("font-size: 20px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+        task1_button.setFixedSize(200, 40)
+
+        tasks_button_Layout.addWidget(tasks_button_label, alignment=Qt.AlignmentFlag.AlignCenter)
+        tasks_button_Layout.addStretch()
+        tasks_button_Layout.addWidget(task1_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        tasks_button_Layout.addStretch()
+        direction_task_layout.addWidget(tasks_button_section)
+        direction_task_layout.addStretch()
+
+
+
+        # --- Thrusters Up & Down Section ---
+        updownthruster_section = QWidget(self)
+        updownthruster_section.setFixedSize(250, 200)
+        updownthruster_section.setStyleSheet(
+            "background-color: rgba(114, 238, 238, 40); border-radius: 10px; "
+        )
+
+        updownSpeed_Layout = QVBoxLayout(updownthruster_section)
+        updown_movementSpeed_label = QLabel("Thrusters Up & Down", self)
+        updown_movementSpeed_label.setStyleSheet("font-size: 12px; background-color: transparent;  font-family: Montserrat;")
+
+        moveUp = QLabel('Thrusters 5', self)
+        moveUp.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+
+        movementSpeedUp = QLabel('1590', self)
+        movementSpeedUp.setStyleSheet("font-size: 30px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+
+        moveDown = QLabel('Thrusters 8', self)
+        moveDown.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+
+        movementSpeedDown = QLabel('1590', self)
+        movementSpeedDown.setStyleSheet("font-size: 30px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+
+        updownSpeed_Layout.addWidget(updown_movementSpeed_label, alignment=Qt.AlignmentFlag.AlignLeft)
+        updownSpeed_Layout.addWidget(moveUp, alignment=Qt.AlignmentFlag.AlignLeft)
+        updownSpeed_Layout.addWidget(movementSpeedUp, alignment=Qt.AlignmentFlag.AlignLeft)
+        updownSpeed_Layout.addWidget(moveDown, alignment=Qt.AlignmentFlag.AlignLeft)
+        updownSpeed_Layout.addWidget(movementSpeedDown, alignment=Qt.AlignmentFlag.AlignLeft)
+
+        # Add both sections to the second row
         colfirstRow.addWidget(thruster_section)
+        colfirstRow.addSpacing(20)
+        colfirstRow.addLayout(direction_task_layout)
+        colfirstRow.addSpacing(20)
+        colfirstRow.addWidget(updownthruster_section)
+        colfirstRow.addSpacing(20)
+  
         second_row.addLayout(colfirstRow)
 
         # Add rows to main layout
