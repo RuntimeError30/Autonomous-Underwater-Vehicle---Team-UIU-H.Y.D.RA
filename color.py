@@ -30,10 +30,10 @@ class ColorDetectionApp(QWidget):
 
         # Define color ranges (HSV)
         self.color_ranges = {
-            'red': ((0, 100, 100), (10, 255, 255)),
-            'yellow': ((20, 100, 100), (40, 255, 255)),
-            'black': ((0, 0, 0), (180, 255, 50)),
-            'white': ((0, 0, 200), (180, 20, 255)),
+            'Brick': ((0, 100, 100), (10, 255, 255)),
+            'Wheat': ((20, 100, 100), (40, 255, 255)),
+            'Coal': ((0, 0, 0), (180, 255, 50)),
+            'Furnase Sand': ((0, 0, 200), (180, 20, 255)),
         }
 
         # Setup timer if camera is available
@@ -53,7 +53,7 @@ class ColorDetectionApp(QWidget):
             "udpsrc port=5000 caps=application/x-rtp,media=video,encoding-name=H264,payload=96 "
             "! rtph264depay ! avdec_h264 ! videoconvert ! appsink"
         )
-        cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
+        cap = cv2.VideoCapture(0)
         return cap if cap.isOpened() else None
 
     def update_frame(self):
