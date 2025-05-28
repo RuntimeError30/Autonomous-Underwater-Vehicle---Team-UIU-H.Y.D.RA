@@ -18,7 +18,7 @@ gst_pipeline = (
     "rtph264depay ! h264parse ! avdec_h264 ! videoconvert ! appsink"
 )
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
 
 if not cap.isOpened():
     print("Failed to open video stream. Check GStreamer pipeline and network connection.")

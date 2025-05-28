@@ -19,8 +19,6 @@ class MainWindow(QMainWindow):
         self.setStyleSheet(self.dark_mode)
 
 
-
-
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
@@ -131,7 +129,7 @@ if __name__ == '__main__':
         background-color: #181e1c;
         margin: 0;
         padding: 0;
-        font-family: Montserrat;
+        font-family: Equinox;
         color: white;
     }
     QVBoxLayout, QHBoxLayout {

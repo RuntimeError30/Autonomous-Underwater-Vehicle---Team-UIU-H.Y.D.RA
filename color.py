@@ -53,7 +53,7 @@ class ColorDetectionApp(QWidget):
             "udpsrc port=5000 caps=application/x-rtp,media=video,encoding-name=H264,payload=96 "
             "! rtph264depay ! avdec_h264 ! videoconvert ! appsink"
         )
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
         return cap if cap.isOpened() else None
 
     def update_frame(self):

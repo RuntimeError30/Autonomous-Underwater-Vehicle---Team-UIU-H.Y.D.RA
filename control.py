@@ -16,7 +16,8 @@ from PyQt6.QtWidgets import (
     QSpacerItem,
     QSizePolicy,
     QSlider,
-    QFrame
+    QFrame,
+    QGraphicsOpacityEffect
 )
 from PyQt6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor, QPainterPath, QKeyEvent
 from PyQt6.QtCore import Qt, QRectF, QTimer
@@ -35,246 +36,192 @@ class ControlPage(QWidget):
         self.command_delay = 0.1  
 
     def init_ui(self):
-        main_layout = QVBoxLayout(self)  # Main vertical layout
+        main_layout = QVBoxLayout(self) 
 
-        # First Row (Camera Feed)
-        first_row = QVBoxLayout()
-        mainCam_label = QLabel("Camera Feed", self)
-        mainCam_label.setStyleSheet("font-size: 10px; color: #d1d2d2; font-family: Montserrat;")
+        main_row = QHBoxLayout()
 
-        self.main_cam = QLabel(self)
-        self.main_cam.setFixedSize(1260, 440)
-        self.main_cam.setStyleSheet("background: transparent; border: 1px solid #72eeee; border-radius: 5px;")
-
-        # # Create the Color Detect button
-        # self.detect_button = QPushButton("Color Detect", self)
-        # self.layout.addWidget(self.detect_button)
-
-        # Initialize webcam capture
-        self.cap = cv2.VideoCapture(0)
-        self.is_detecting = False
-
-        # Define the color ranges for red, yellow, black, and white
-        self.color_ranges = {
-            'red': ((0, 100, 100), (10, 255, 255)),
-            'yellow': ((20, 100, 100), (40, 255, 255)),
-            'black': ((0, 0, 0), (180, 255, 50)),
-            'white': ((0, 0, 200), (180, 20, 255)),
-        }
-
-        # Create a timer to continuously update the camera feed
-        self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update_frame)
-        self.timer.start(30)  # Refresh every 30 ms (around 33 fps)
-
-        # Connect the button to the toggle method
+        frame_buttonLayout = QVBoxLayout()
         
+        small_frame = QLabel()
+        small_frame.setStyleSheet("background-color: transparent; border: 1px solid #005767; border-radius: 20px; margin-bottom: 10px;")
+        small_frame.setFixedSize(384, 216)
 
-        first_row.addWidget(mainCam_label, alignment=Qt.AlignmentFlag.AlignCenter)
-        first_row.addWidget(self.main_cam, alignment=Qt.AlignmentFlag.AlignCenter)
-        first_row.addStretch()
+        camerabtn_label = QLabel("SWITCH CAMERAS")
+        camerabtn_label.setStyleSheet("""color: white; font-size: 12px; font-weight: bold; margin-top: 20px;""")
+        opacity_effect = QGraphicsOpacityEffect()
+        camerabtn_label.setGraphicsEffect(opacity_effect)
+        opacity_effect.setOpacity(0.6)  # Set opacity for the label
 
-        # Second Row (Thruster Speed Section)
-        second_row = QVBoxLayout()
-        colfirstRow = QHBoxLayout()
+        camera01_btn = QPushButton("Camera 01")
+        camera01_btn.setFixedSize(150, 50)
+        camera01_btn.setStyleSheet("""
+            background-color: transparent;
+            color: white;
+            font-size: 10px;
+            padding: 5px;
+            border: 1px solid #FF8800;
+            border-radius: 5px;
+            margin-top: 10px;
+            
+        """)
 
-        # --- Thrusters Left & Right Section ---
-        thruster_section = QWidget(self)
-        thruster_section.setFixedSize(250, 200)
-        thruster_section.setStyleSheet(
-            "background-color: rgba(114, 238, 238, 40);  border-radius: 10px;"
-        )
+        camera02_btn = QPushButton("Camera 02")
+        camera02_btn.setFixedSize(150, 50)
+        camera02_btn.setStyleSheet("""
+            background-color: transparent;
+            color: white;
+            font-size: 10px;
+            padding: 5px;
+            border: 1px solid #FF8800;
+            border-radius: 5px;
+            margin-top: 10px;
+            
+        """)
 
-        movementSpeed_Layout = QVBoxLayout(thruster_section)
-        movementSpeed_label = QLabel("Thrusters Left & Right", self)
-        movementSpeed_label.setStyleSheet("font-size: 12px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        moveLeft = QLabel('Thrusters 1', self)
-        moveLeft.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        movementSpeedLeft = QLabel('1590', self)
-        movementSpeedLeft.setStyleSheet("font-size: 30px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        movemRight = QLabel('Thrusters 2', self)
-        movemRight.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        movementSpeedRight = QLabel('1590', self)
-        movementSpeedRight.setStyleSheet("font-size: 30px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        movementSpeed_Layout.addWidget(movementSpeed_label, alignment=Qt.AlignmentFlag.AlignLeft)
-        movementSpeed_Layout.addWidget(moveLeft, alignment=Qt.AlignmentFlag.AlignLeft)
-        movementSpeed_Layout.addWidget(movementSpeedLeft, alignment=Qt.AlignmentFlag.AlignLeft)
-        movementSpeed_Layout.addWidget(movemRight, alignment=Qt.AlignmentFlag.AlignLeft)
-        movementSpeed_Layout.addWidget(movementSpeedRight, alignment=Qt.AlignmentFlag.AlignLeft)
-
-
-
-        # --- Thrusters Direction Section ---
-        direction_task_layout = QVBoxLayout()
+        frame_buttonLayout.addWidget(small_frame)
+        frame_buttonLayout.addWidget(camerabtn_label)
+        frame_buttonLayout.addWidget(camera01_btn)
+        frame_buttonLayout.addWidget(camera02_btn)
+        frame_buttonLayout.addStretch()
 
 
-        # --- Thrusters Direction Section ---
-        thruster_direction_section = QWidget(self)
-        thruster_direction_section.setFixedSize(250, 100)
-        thruster_direction_section.setStyleSheet(
-            "background-color: rgba(114, 238, 238, 40);"
-        )
+        # Main camera display
+        main_camera = QLabel()
+        main_camera.setFixedSize(960, 540)
+        main_camera.setStyleSheet("background-color: transparent; border: 1px solid #005767; border-radius: 20px;")
+
+
+
+        # Thrusters and Status
+        thrusterstatus_layout = QVBoxLayout()
+
+
+        status_container = QWidget()
+        status_container.setStyleSheet("""
+            background-color: #181818;
+            border: 1px solid #0D363E;
+            border-radius: 10px;
+            padding: 10px;
+        """)
+        container_layout = QVBoxLayout()
+
+        # Create and style the label inside
+        status_label = QLabel("Communication Status")
+        status_label.setStyleSheet("""
+            color: white;
+            font-size: 8px;
+            border: none;
+        """)
+        conn_label = QLabel("CONNECTED")
+        conn_label.setStyleSheet("""
+            color: #FF8800;
+            font-size: 20px;
+            height: 30px;
+            border: none;
+        """)
+        ip_label = QLabel("IP ADDRESS: 192.168.2.3")
+        ip_label.setStyleSheet("""
+            color: white;
+            font-size: 8px;
+            border: none;
+        """)
+        container_layout.addWidget(status_label)
+        container_layout.addWidget(conn_label)
+        container_layout.addWidget(ip_label)
+        status_container.setLayout(container_layout)
+        status_container.setFixedSize(400, 130)
+
+
+
+        thrusterstatus_layout.addWidget(status_container)
+        thrusterstatus_layout.addStretch()
+
+        # Control Status
+
+        pwm_layout = QVBoxLayout()
         
-        thruster_direction_Layout = QVBoxLayout(thruster_direction_section)
-        thruster_direction_label = QLabel("Thrusters Direction", self)
-        thruster_direction_label.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-        moveForward = QLabel('Forward', self)
-        moveForward.setStyleSheet("font-size: 20px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
+        control_status = QWidget()
+        control_status.setStyleSheet("""
+            background-color:
+            #181818;
+            border: 1px solid #0D363E;
+            border-radius: 10px;
+            padding: 10px;
+        """)
 
+        main_row.addLayout(frame_buttonLayout)
+        main_row.addWidget(main_camera)
+        main_row.addLayout(thrusterstatus_layout)
 
-        thruster_direction_Layout.addWidget(thruster_direction_label, alignment=Qt.AlignmentFlag.AlignCenter)
-        thruster_direction_Layout.addStretch()
-        thruster_direction_Layout.addWidget(moveForward, alignment=Qt.AlignmentFlag.AlignCenter)
-        thruster_direction_Layout.addStretch()
-
-        direction_task_layout.addWidget(thruster_direction_section)
-        direction_task_layout.addStretch()
-
-        # Tasks button section
-        tasks_button_section = QWidget(self)
-        tasks_button_section.setFixedSize(250, 150)
-        tasks_button_section.setStyleSheet(
-            "background-color: rgba(114, 238, 238, 40);"
-        )
-        tasks_button_Layout = QVBoxLayout(tasks_button_section)
-        tasks_button_label = QLabel("Perform Tasks", self)
-        tasks_button_label.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        task1_button = QPushButton("Capture Panorama", self)
-        task1_button.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: rgba(114, 238, 238, 40); font-family: Montserrat;")
-        task1_button.setFixedSize(200, 40)
-        task1_button.setCursor(Qt.CursorShape.PointingHandCursor)
-
-        self.task2_button = QPushButton("Recognize Cargo", self)
-        self.task2_button.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: rgba(114, 238, 238, 40); margin-top:20px; font-family: Montserrat;")
-        self.task2_button.setFixedSize(200, 40)
-        self.task2_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.task2_button.clicked.connect(self.toggle_detection)
-
-
-        tasks_button_Layout.addWidget(tasks_button_label, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        tasks_button_Layout.addWidget(task1_button, alignment=Qt.AlignmentFlag.AlignCenter)
-        tasks_button_Layout.addWidget(self.task2_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        tasks_button_Layout.addStretch()
-        direction_task_layout.addWidget(tasks_button_section)
-        direction_task_layout.addStretch()
-
-
-
-        # --- Thrusters Up & Down Section ---
-        updownthruster_section = QWidget(self)
-        updownthruster_section.setFixedSize(250, 200)
-        updownthruster_section.setStyleSheet(
-            "background-color: rgba(114, 238, 238, 40); border-radius: 10px; "
-        )
-
-        updownSpeed_Layout = QVBoxLayout(updownthruster_section)
-        updown_movementSpeed_label = QLabel("Thrusters Up & Down", self)
-        updown_movementSpeed_label.setStyleSheet("font-size: 12px; background-color: transparent;  font-family: Montserrat;")
-
-        moveUp = QLabel('Thrusters 5', self)
-        moveUp.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        movementSpeedUp = QLabel('1590', self)
-        movementSpeedUp.setStyleSheet("font-size: 30px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        moveDown = QLabel('Thrusters 8', self)
-        moveDown.setStyleSheet("font-size: 10px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        movementSpeedDown = QLabel('1590', self)
-        movementSpeedDown.setStyleSheet("font-size: 30px; color: #d1d2d2; background-color: transparent; font-family: Montserrat;")
-
-        updownSpeed_Layout.addWidget(updown_movementSpeed_label, alignment=Qt.AlignmentFlag.AlignLeft)
-        updownSpeed_Layout.addWidget(moveUp, alignment=Qt.AlignmentFlag.AlignLeft)
-        updownSpeed_Layout.addWidget(movementSpeedUp, alignment=Qt.AlignmentFlag.AlignLeft)
-        updownSpeed_Layout.addWidget(moveDown, alignment=Qt.AlignmentFlag.AlignLeft)
-        updownSpeed_Layout.addWidget(movementSpeedDown, alignment=Qt.AlignmentFlag.AlignLeft)
-
-        # Add both sections to the second row
-        colfirstRow.addWidget(thruster_section)
-        colfirstRow.addSpacing(20)
-        colfirstRow.addLayout(direction_task_layout)
-        colfirstRow.addSpacing(20)
-        colfirstRow.addWidget(updownthruster_section)
-        colfirstRow.addSpacing(20)
-  
-        second_row.addLayout(colfirstRow)
+        main_row.addStretch()
+        
 
         # Add rows to main layout
-        main_layout.addLayout(first_row)
-        main_layout.addSpacing(20)
-        main_layout.addLayout(second_row)
+        main_layout.addLayout(main_row)
         main_layout.addStretch()
 
         self.setLayout(main_layout)
 
-# Color detection Code
-    def update_frame(self):
-        ret, frame = self.cap.read()
-        if ret:
-            if self.is_detecting:
-                frame = self.detect_colors(frame)
+# # Color detection Code
+#     def update_frame(self):
+#         ret, frame = self.cap.read()
+#         if ret:
+#             if self.is_detecting:
+#                 frame = self.detect_colors(frame)
 
-            # Convert the frame to RGB (OpenCV uses BGR by default)
-            rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+#             # Convert the frame to RGB (OpenCV uses BGR by default)
+#             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-            # Convert to QImage and set it on the QLabel
-            h, w, c = rgb_frame.shape
-            q_img = QImage(rgb_frame.data, w, h, c * w, QImage.Format.Format_RGB888)
-            self.main_cam.setPixmap(QPixmap.fromImage(q_img))
+#             # Convert to QImage and set it on the QLabel
+#             h, w, c = rgb_frame.shape
+#             q_img = QImage(rgb_frame.data, w, h, c * w, QImage.Format.Format_RGB888)
+#             self.main_cam.setPixmap(QPixmap.fromImage(q_img))
 
-    def detect_colors(self, frame):
-        # Convert the image to HSV color space
-        hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+#     def detect_colors(self, frame):
+#         # Convert the image to HSV color space
+#         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-        for color, (lower, upper) in self.color_ranges.items():
-            # Create mask for each color range
-            lower_bound = np.array(lower)
-            upper_bound = np.array(upper)
-            mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
+#         for color, (lower, upper) in self.color_ranges.items():
+#             # Create mask for each color range
+#             lower_bound = np.array(lower)
+#             upper_bound = np.array(upper)
+#             mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
 
-            # Apply Gaussian blur to smooth the mask
-            mask = cv2.GaussianBlur(mask, (5, 5), 0)
+#             # Apply Gaussian blur to smooth the mask
+#             mask = cv2.GaussianBlur(mask, (5, 5), 0)
 
-            # Morphological operations to remove small noise and fill gaps
-            kernel = np.ones((5, 5), np.uint8)
-            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Close gaps
-            mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)  # Remove noise
+#             # Morphological operations to remove small noise and fill gaps
+#             kernel = np.ones((5, 5), np.uint8)
+#             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Close gaps
+#             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)  # Remove noise
 
-            # Find contours of the detected color
-            contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#             # Find contours of the detected color
+#             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-            for contour in contours:
-                if cv2.contourArea(contour) > 500:  # Filter out small contours
-                    # Get the bounding box
-                    x, y, w, h = cv2.boundingRect(contour)
-                    # Draw the bounding box and label the color
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-                    cv2.putText(frame, color, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+#             for contour in contours:
+#                 if cv2.contourArea(contour) > 500:  # Filter out small contours
+#                     # Get the bounding box
+#                     x, y, w, h = cv2.boundingRect(contour)
+#                     # Draw the bounding box and label the color
+#                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+#                     cv2.putText(frame, color, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
-        return frame
+#         return frame
 
-    def toggle_detection(self):
-        # Toggle the color detection state
-        self.is_detecting = not self.is_detecting
-        print(f"Color Detection is now: {'ON' if self.is_detecting else 'OFF'}")  # Debug print to verify state
-        if self.is_detecting:
-            self.task2_button.setText("Stop Detection")
-        else:
-            self.task2_button.setText("Cargo Detection")
+#     def toggle_detection(self):
+#         # Toggle the color detection state
+#         self.is_detecting = not self.is_detecting
+#         print(f"Color Detection is now: {'ON' if self.is_detecting else 'OFF'}")  # Debug print to verify state
+#         if self.is_detecting:
+#             self.task2_button.setText("Stop Detection")
+#         else:
+#             self.task2_button.setText("Cargo Detection")
 
 
-    def closeEvent(self, event):
-        # Release the webcam capture when closing the application
-        self.cap.release()
-        event.accept()
+#     def closeEvent(self, event):
+#         # Release the webcam capture when closing the application
+#         self.cap.release()
+#         event.accept()
 
 
 
