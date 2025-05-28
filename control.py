@@ -19,7 +19,7 @@ from PyQt6.QtWidgets import (
     QFrame,
     QGraphicsOpacityEffect
 )
-from PyQt6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor, QPainterPath, QKeyEvent
+from PyQt6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor, QPainterPath, QKeyEvent, QPixmap
 from PyQt6.QtCore import Qt, QRectF, QTimer
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 
@@ -209,7 +209,6 @@ class ControlPage(QWidget):
         thruster7_layout = QHBoxLayout()
         thruster7_label = QLabel("THRUSTER 7")
         thruster7_label.setStyleSheet("""
-            color: white;
             border: none;
         """)
         thruster7_value = QLabel("0")
@@ -220,7 +219,67 @@ class ControlPage(QWidget):
         thruster7_layout.addWidget(thruster7_label)
         thruster7_layout.addWidget(thruster7_value)
 
+        fwd_label = QLabel("FORWARD/BACKWARD")
+        fwd_label.setStyleSheet("""
+            font-size: 8px;
+            border: none;
+        """)
 
+        # Thruster 1
+        thruster1_layout = QHBoxLayout()
+        thruster1_label = QLabel("THRUSTER 1")
+        thruster1_label.setStyleSheet("""
+            color: white;
+            border: none;
+        """)
+        thruster1_value = QLabel("0")
+        thruster1_value.setStyleSheet("""
+            color: #FF8800;
+        """)
+        thruster1_layout.addWidget(thruster1_label)
+        thruster1_layout.addWidget(thruster1_value)
+
+        # Thruster 4
+        thruster4_layout = QHBoxLayout()
+        thruster4_label = QLabel("THRUSTER 4")
+        thruster4_label.setStyleSheet("""
+            color: white;
+            border: none;
+        """)
+        thruster4_value = QLabel("0")
+        thruster4_value.setStyleSheet("""
+            color: #FF8800;
+        """)
+        thruster4_layout.addWidget(thruster4_label)
+        thruster4_layout.addWidget(thruster4_value)
+
+        # Thruster 5
+        thruster5_layout = QHBoxLayout()
+        thruster5_label = QLabel("THRUSTER 5")
+        thruster5_label.setStyleSheet("""
+            color: white;
+            border: none;
+        """)
+        thruster5_value = QLabel("0")
+        thruster5_value.setStyleSheet("""
+            color: #FF8800;
+        """)
+        thruster5_layout.addWidget(thruster5_label)
+        thruster5_layout.addWidget(thruster5_value)
+
+        # Thruster 8
+        thruster8_layout = QHBoxLayout()
+        thruster8_label = QLabel("THRUSTER 8")
+        thruster8_label.setStyleSheet("""
+            color: white;
+            border: none;
+        """)
+        thruster8_value = QLabel("0")
+        thruster8_value.setStyleSheet("""
+            color: #FF8800;
+        """)
+        thruster8_layout.addWidget(thruster8_label)
+        thruster8_layout.addWidget(thruster8_value)
 
 
         control_layout.addWidget(main_label)
@@ -231,7 +290,13 @@ class ControlPage(QWidget):
         control_layout.addLayout(thruster3_layout)
         control_layout.addLayout(thruster6_layout)
         control_layout.addLayout(thruster7_layout)
-        control_layout.addStretch()
+
+        control_layout.addWidget(fwd_label)
+        control_layout.addLayout(thruster1_layout)
+        control_layout.addLayout(thruster4_layout)
+        control_layout.addLayout(thruster5_layout)
+        control_layout.addLayout(thruster8_layout)
+        
 
 
         control_status.setLayout(control_layout)
@@ -243,15 +308,108 @@ class ControlPage(QWidget):
 
 
         main_row.addLayout(frame_buttonLayout)
-        main_row.addWidget(main_camera)
+        main_row.addWidget(main_camera, alignment=Qt.AlignmentFlag.AlignTop)
         main_row.addLayout(thrusterstatus_layout)
         
 
         main_row.addStretch()
+
+        second_row = QHBoxLayout()
+
+        sensor_layout = QVBoxLayout()
+        
+        sensor_label = QLabel("SENSORS")
+        sensor_label.setStyleSheet("""font-size: 12px; font-weight: bold; color: white; margin-bottom: 40px;""")
+        
+        depth_layout = QHBoxLayout()
+        depth_label = QLabel("DEPTH")
+        depth_value = QLabel("0 m")
+        depth_value.setStyleSheet("border: 1px solid #0D363E; border-radius: 5px; padding: 10px; color: #FF8800;")
+        depth_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        depth_label.setStyleSheet("color: white; font-size: 8px;")
+        depth_layout.addWidget(depth_label)
+        depth_layout.addWidget(depth_value)
+
+        temp_layout = QHBoxLayout()
+        temp_label = QLabel("TEMPERATURE")
+        temp_value = QLabel("0 °C")
+        temp_value.setStyleSheet("border: 1px solid #0D363E; border-radius: 5px; padding: 10px; color: #FF8800;")
+        temp_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        temp_layout.addWidget(temp_label)
+        temp_layout.addWidget(temp_value)
+
+        pressure_layout = QHBoxLayout()
+        pressure_label = QLabel("PRESSURE")
+        pressure_value = QLabel("0 Pa")
+        pressure_value.setStyleSheet("border: 1px solid #0D363E; border-radius: 5px; padding: 10px; color: #FF8800;")
+        pressure_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        pressure_layout.addWidget(pressure_label)
+        pressure_layout.addWidget(pressure_value)
+
+        sensor_layout.addWidget(sensor_label)
+        sensor_layout.addLayout(depth_layout)
+        sensor_layout.addLayout(temp_layout)
+        sensor_layout.addLayout(pressure_layout)
+        sensor_layout.addStretch()
+
+        #leak and Emergency Alarm
+
+        alarm_layout = QVBoxLayout()
+
+        leak_label = QLabel("LEAK ALARM")
+        leak_label.setStyleSheet("color: 4F4F4F; background: #4F4F4F; font-size: 10px;border-radius: 50px; padding: 10px; color: white;")
+        leak_label.setFixedSize(100, 100)
+        leak_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        emergency_label = QPushButton("EMERGENCY")
+        emergency_label.setStyleSheet("border: 1px solid red; border-radius: 5px; padding: 10px; color: red; font-size: 10px; background-color: transparent;")
+
+
+        alarm_layout.addWidget(leak_label)
+        alarm_layout.addWidget(emergency_label) 
+        alarm_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+
+        joystick_layout = QVBoxLayout()
+        image1_label = QLabel()
+        pixmap1 = QPixmap("Autonomous-Underwater-Vehicle---Team-UIU-H.Y.D.RA/assets/joystick.png")  
+        image1_label.setPixmap(pixmap1)
+
+        joystick_layout2 = QVBoxLayout()
+        image2_label = QLabel()
+        pixmap2 = QPixmap("Autonomous-Underwater-Vehicle---Team-UIU-H.Y.D.RA/assets/joystick.png")  
+        image2_label.setPixmap(pixmap1)
+
+        label1 = QLabel("ARM JOYSTICK")
+        label1.setStyleSheet("font-size: 10px;")
+        conn_joystick1 = QLabel("XBox 360 Controller")
+        conn_joystick1.setStyleSheet("font-size: 20px; color: #FF8800")
+
+        label2 = QLabel("ARM JOYSTICK")
+        label2.setStyleSheet("font-size: 10px;")
+        conn_joystick2 = QLabel("XBox 360 Controller")
+        conn_joystick2.setStyleSheet("font-size: 20px; color: #FF8800")
+
+        joystick_layout.addWidget(image1_label)
+        joystick_layout.addWidget(label1)
+        joystick_layout.addWidget(conn_joystick1)
+
+        joystick_layout2.addWidget(image2_label)
+        joystick_layout2.addWidget(label2)
+        joystick_layout2.addWidget(conn_joystick2)
+
+        taske_layout = QVBoxLayout()
         
 
+        
+        second_row.addLayout(sensor_layout)
+        second_row.addLayout(alarm_layout)
+        second_row.addLayout(joystick_layout)
+        second_row.addLayout(joystick_layout2)
+        
         # Add rows to main layout
         main_layout.addLayout(main_row)
+        main_layout.addLayout(second_row)
         main_layout.addStretch()
 
         self.setLayout(main_layout)

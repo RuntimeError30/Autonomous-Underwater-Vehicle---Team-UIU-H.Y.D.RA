@@ -129,7 +129,7 @@ if __name__ == '__main__':
         background-color: #181e1c;
         margin: 0;
         padding: 0;
-        font-family: Equinox;
+        font-family: Equinox ;
         color: white;
     }
     QVBoxLayout, QHBoxLayout {
