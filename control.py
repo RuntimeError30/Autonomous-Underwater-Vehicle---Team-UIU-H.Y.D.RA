@@ -132,14 +132,7 @@ class ControlPage(QWidget):
         status_container.setFixedSize(400, 130)
 
 
-
-        thrusterstatus_layout.addWidget(status_container)
-        thrusterstatus_layout.addStretch()
-
-        # Control Status
-
-        pwm_layout = QVBoxLayout()
-        
+        # Create thruster buttons
         control_status = QWidget()
         control_status.setStyleSheet("""
             background-color:
@@ -149,9 +142,110 @@ class ControlPage(QWidget):
             padding: 10px;
         """)
 
+        control_layout = QVBoxLayout()
+
+        main_label = QLabel("DIRECTION")
+        main_label.setStyleSheet("""
+            color: white;
+            font-size: 8px;
+            border: none;
+        """)
+
+        dir_status = QLabel("NEUTRAL")
+        dir_status.setStyleSheet("""
+            color: #FF8800;
+            font-size: 20px;
+            border: none;
+        """)
+
+        
+        up_label = QLabel("UP/DOWN")
+        up_label.setStyleSheet("""
+            color: white;
+            font-size: 8px;
+            border: none;
+        """)
+
+        thruster2_Layout = QHBoxLayout()
+        thruster2_label = QLabel("THRUSTER 2")
+        thruster2_label.setStyleSheet("""
+            color: white;
+            border: none;
+        """)
+        thruster2 = QLabel("0")
+        thruster2.setStyleSheet("""
+            color: #FF8800;
+        """)
+        thruster2_Layout.addWidget(thruster2_label)
+        thruster2_Layout.addWidget(thruster2)
+
+        thruster3_layout = QHBoxLayout()
+        thruster3_label = QLabel("THRUSTER 3")
+        thruster3_label.setStyleSheet("""
+            color: white;
+            border: none;
+        """)
+        thruster3_value = QLabel("0")
+        thruster3_value.setStyleSheet("""
+            color: #FF8800;
+
+        """)
+        thruster3_layout.addWidget(thruster3_label)
+        thruster3_layout.addWidget(thruster3_value)
+
+        thruster6_layout = QHBoxLayout()
+        thruster6_label = QLabel("THRUSTER 6")
+        thruster6_label.setStyleSheet("""
+            color: white;
+            border: none;
+        """)
+        thruster6_value = QLabel("0")
+        thruster6_value.setStyleSheet("""
+            color: #FF8800;
+        """)
+        thruster6_layout.addWidget(thruster6_label)
+        thruster6_layout.addWidget(thruster6_value)
+
+        thruster7_layout = QHBoxLayout()
+        thruster7_label = QLabel("THRUSTER 7")
+        thruster7_label.setStyleSheet("""
+            color: white;
+            border: none;
+        """)
+        thruster7_value = QLabel("0")
+        thruster7_value.setStyleSheet("""
+            color: #FF8800;
+
+        """)
+        thruster7_layout.addWidget(thruster7_label)
+        thruster7_layout.addWidget(thruster7_value)
+
+
+
+
+        control_layout.addWidget(main_label)
+        control_layout.addWidget(dir_status)
+        control_layout.addWidget(up_label)
+
+        control_layout.addLayout(thruster2_Layout)
+        control_layout.addLayout(thruster3_layout)
+        control_layout.addLayout(thruster6_layout)
+        control_layout.addLayout(thruster7_layout)
+        control_layout.addStretch()
+
+
+        control_status.setLayout(control_layout)
+
+
+        thrusterstatus_layout.addWidget(status_container)
+        thrusterstatus_layout.addWidget(control_status)
+        thrusterstatus_layout.addStretch()
+
+
         main_row.addLayout(frame_buttonLayout)
         main_row.addWidget(main_camera)
         main_row.addLayout(thrusterstatus_layout)
+        
 
         main_row.addStretch()
         
