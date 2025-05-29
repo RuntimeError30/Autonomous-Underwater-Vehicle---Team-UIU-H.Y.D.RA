@@ -514,158 +514,158 @@ class ControlPage(QWidget):
 
 
 
-    def send_command(self, command):
-        """Send command to Raspberry Pi MAVProxy server"""
-        HOST = "192.168.125.27"  # Change if necessary
-        PORT = 7000
+    # def send_command(self, command):
+    #     """Send command to Raspberry Pi MAVProxy server"""
+    #     HOST = "192.168.125.27"  # Change if necessary
+    #     PORT = 7000
 
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-                client_socket.connect((HOST, PORT))
-                client_socket.sendall(command.encode())
-                print(f"Sent: {command}")
-        except Exception as e:
-            print(f"Error sending command: {e}")
+    #     try:
+    #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+    #             client_socket.connect((HOST, PORT))
+    #             client_socket.sendall(command.encode())
+    #             print(f"Sent: {command}")
+    #     except Exception as e:
+    #         print(f"Error sending command: {e}")
 
-    def keyPressEvent(self, event: QKeyEvent):
-        """Handle keyboard input"""
-        key_map = {
-            Qt.Key.Key_W: ["rc 3 1000", "rc 4 1000"],  # Forward
-            Qt.Key.Key_S: ["rc 3 2000", "rc 4 2000"],  # Backward
-            Qt.Key.Key_A: ["rc 1 2000", "rc 2 2000"],  # Left
-            Qt.Key.Key_D: ["rc 1 1000", "rc 2 1000"],  # Right
-            Qt.Key.Key_Up: ["rc 5 1000", "rc 6 1000"],  # Up Tilt
-            Qt.Key.Key_Down: ["rc 5 2000", "rc 6 2000"],  # Down Tilt
-            Qt.Key.Key_U: ["rc 5 1000", "rc 8 2000"],  # Up Normal
-        }
+    # def keyPressEvent(self, event: QKeyEvent):
+    #     """Handle keyboard input"""
+    #     key_map = {
+    #         Qt.Key.Key_W: ["rc 3 1000", "rc 4 1000"],  # Forward
+    #         Qt.Key.Key_S: ["rc 3 2000", "rc 4 2000"],  # Backward
+    #         Qt.Key.Key_A: ["rc 1 2000", "rc 2 2000"],  # Left
+    #         Qt.Key.Key_D: ["rc 1 1000", "rc 2 1000"],  # Right
+    #         Qt.Key.Key_Up: ["rc 5 1000", "rc 6 1000"],  # Up Tilt
+    #         Qt.Key.Key_Down: ["rc 5 2000", "rc 6 2000"],  # Down Tilt
+    #         Qt.Key.Key_U: ["rc 5 1000", "rc 8 2000"],  # Up Normal
+    #     }
 
-        if event.key() in key_map:
-            commands = key_map[event.key()]
-            for command in commands:
-                if command not in self.active_commands:
-                    self.active_commands.append(command)
-                self.send_command(command)
-                self.last_command_time = time.time()
+    #     if event.key() in key_map:
+    #         commands = key_map[event.key()]
+    #         for command in commands:
+    #             if command not in self.active_commands:
+    #                 self.active_commands.append(command)
+    #             self.send_command(command)
+    #             self.last_command_time = time.time()
 
-        elif event.key() == Qt.Key.Key_Q:  # Reset command
-            self.reset_commands()
+    #     elif event.key() == Qt.Key.Key_Q:  # Reset command
+    #         self.reset_commands()
 
-    def joystick_init(self):
-        """Initialize joystick"""
-        pygame.init()
-        pygame.joystick.init()
-        if pygame.joystick.get_count() > 0:
-            self.joystick = pygame.joystick.Joystick(0)
-            self.joystick.init()
-            print("Joystick Connected!")
-        else:
-            self.joystick = None
-            print("No Joystick Found!")
+    # def joystick_init(self):
+    #     """Initialize joystick"""
+    #     pygame.init()
+    #     pygame.joystick.init()
+    #     if pygame.joystick.get_count() > 0:
+    #         self.joystick = pygame.joystick.Joystick(0)
+    #         self.joystick.init()
+    #         print("Joystick Connected!")
+    #     else:
+    #         self.joystick = None
+    #         print("No Joystick Found!")
 
-    def read_joystick(self):
-        """Read joystick input and send appropriate RC commands"""
-        if not self.joystick:
-            return
+    # def read_joystick(self):
+    #     """Read joystick input and send appropriate RC commands"""
+    #     if not self.joystick:
+    #         return
 
-        pygame.event.pump()
+    #     pygame.event.pump()
 
-        # Axis values
-        axis_0 = self.joystick.get_axis(0)  # Left/Right
-        axis_1 = self.joystick.get_axis(1)  # Forward/Backward
-        axis_5 = self.joystick.get_axis(3)  # Up/Down
-        axis_4 = self.joystick.get_axis(4)  # Forward Tilt
+    #     # Axis values
+    #     axis_0 = self.joystick.get_axis(0)  # Left/Right
+    #     axis_1 = self.joystick.get_axis(1)  # Forward/Backward
+    #     axis_5 = self.joystick.get_axis(3)  # Up/Down
+    #     axis_4 = self.joystick.get_axis(4)  # Forward Tilt
 
-        # Button states
-        reset_button = self.joystick.get_button(0)  # Reset Hover
-        stop_button = self.joystick.get_button(9)  # Stop everything
-        send_arm = self.joystick.get_button(0)  # Arm/Disarm
-        close_arm = self.joystick.get_button(1)  # Close Arm
+    #     # Button states
+    #     reset_button = self.joystick.get_button(0)  # Reset Hover
+    #     stop_button = self.joystick.get_button(9)  # Stop everything
+    #     send_arm = self.joystick.get_button(0)  # Arm/Disarm
+    #     close_arm = self.joystick.get_button(1)  # Close Arm
 
-        commands = []
+    #     commands = []
 
-        # Forward/Backward
-        if axis_1 > 0.03:
-            value_3 = int(1550 - (axis_1 * 450))
-            value_4 = int(1450 + (axis_1 * 450))
-            commands.append(f"rc 3 {value_3}")
-            commands.append(f"rc 4 {value_4}")
+    #     # Forward/Backward
+    #     if axis_1 > 0.03:
+    #         value_3 = int(1550 - (axis_1 * 450))
+    #         value_4 = int(1450 + (axis_1 * 450))
+    #         commands.append(f"rc 3 {value_3}")
+    #         commands.append(f"rc 4 {value_4}")
 
-        elif axis_1 < -0.03:
-            value_3 = int(1450 - (axis_1 * 450))
-            value_4 = int(1550 + (axis_1 * 450))
-            commands.append(f"rc 3 {value_3}")
-            commands.append(f"rc 4 {value_4}")
+    #     elif axis_1 < -0.03:
+    #         value_3 = int(1450 - (axis_1 * 450))
+    #         value_4 = int(1550 + (axis_1 * 450))
+    #         commands.append(f"rc 3 {value_3}")
+    #         commands.append(f"rc 4 {value_4}")
 
-        else:
-            commands.append("rc 3 1500")
-            commands.append("rc 4 1500")
+    #     else:
+    #         commands.append("rc 3 1500")
+    #         commands.append("rc 4 1500")
 
-        # Left/Right
-        if axis_0 > 0.3:
-            value = int(1450 + (axis_0 * 450))
-            commands.append(f"rc 1 {value}")
-            commands.append(f"rc 2 {value}")
+    #     # Left/Right
+    #     if axis_0 > 0.3:
+    #         value = int(1450 + (axis_0 * 450))
+    #         commands.append(f"rc 1 {value}")
+    #         commands.append(f"rc 2 {value}")
 
-        elif axis_0 < -0.3:
-            value = int(1550 - (-axis_0 * 450))
-            commands.append(f"rc 1 {value}")
-            commands.append(f"rc 2 {value}")
+    #     elif axis_0 < -0.3:
+    #         value = int(1550 - (-axis_0 * 450))
+    #         commands.append(f"rc 1 {value}")
+    #         commands.append(f"rc 2 {value}")
 
-        else:
-            commands.append("rc 1 1500")
-            commands.append("rc 2 1500")
+    #     else:
+    #         commands.append("rc 1 1500")
+    #         commands.append("rc 2 1500")
 
-        # Up/Down
-        if axis_5 > 0.03:
-            thrust = int(1500 + (axis_5 * 500))
-            thrust2 = int(1500 - (axis_5 * 500))
-            commands.append(f"rc 5 {thrust2}")
-            commands.append(f"rc 8 {thrust}")
+    #     # Up/Down
+    #     if axis_5 > 0.03:
+    #         thrust = int(1500 + (axis_5 * 500))
+    #         thrust2 = int(1500 - (axis_5 * 500))
+    #         commands.append(f"rc 5 {thrust2}")
+    #         commands.append(f"rc 8 {thrust}")
 
-        elif axis_5 < -0.03:
-            thrust = int(1500 - (abs(axis_5) * 500))
-            commands.append(f"rc 5 {thrust}")
-            commands.append(f"rc 8 {thrust}")
+    #     elif axis_5 < -0.03:
+    #         thrust = int(1500 - (abs(axis_5) * 500))
+    #         commands.append(f"rc 5 {thrust}")
+    #         commands.append(f"rc 8 {thrust}")
 
-        else:
-            commands.append("rc 5 1500")
-            commands.append("rc 6 1500")
-            commands.append("rc 7 1500")
-            commands.append("rc 8 1500")
+    #     else:
+    #         commands.append("rc 5 1500")
+    #         commands.append("rc 6 1500")
+    #         commands.append("rc 7 1500")
+    #         commands.append("rc 8 1500")
 
-        # Reset Hover
-        if reset_button:
-            commands.append("rc 5 1500")
-            commands.append("rc 6 1500")
-            commands.append("rc 7 1500")
-            commands.append("rc 8 1500")
+    #     # Reset Hover
+    #     if reset_button:
+    #         commands.append("rc 5 1500")
+    #         commands.append("rc 6 1500")
+    #         commands.append("rc 7 1500")
+    #         commands.append("rc 8 1500")
 
-        # Arm Commands
-        if send_arm:
-            commands.append("open")
-        elif close_arm:
-            commands.append("close")
+    #     # Arm Commands
+    #     if send_arm:
+    #         commands.append("open")
+    #     elif close_arm:
+    #         commands.append("close")
 
-        # Stop Everything
-        if stop_button:
-            commands.extend([
-                "rc 3 1500", "rc 4 1500", "rc 1 1500", "rc 2 1500",
-                "rc 5 1500", "rc 6 1500", "rc 8 1500"
-            ])
+    #     # Stop Everything
+    #     if stop_button:
+    #         commands.extend([
+    #             "rc 3 1500", "rc 4 1500", "rc 1 1500", "rc 2 1500",
+    #             "rc 5 1500", "rc 6 1500", "rc 8 1500"
+    #         ])
 
-        # Throttle sending commands based on time delay
-        current_time = time.time()
-        if current_time - self.last_command_time > self.command_delay:
-            for command in commands:
-                if command not in self.active_commands:
-                    self.active_commands.append(command)
-                self.send_command(command)
-            self.last_command_time = current_time
+    #     # Throttle sending commands based on time delay
+    #     current_time = time.time()
+    #     if current_time - self.last_command_time > self.command_delay:
+    #         for command in commands:
+    #             if command not in self.active_commands:
+    #                 self.active_commands.append(command)
+    #             self.send_command(command)
+    #         self.last_command_time = current_time
 
-    def reset_commands(self):
-        """Reset all RC commands"""
-        reset_commands = ["rc 1 1500", "rc 2 1500", "rc 3 1500", "rc 4 1500",
-                          "rc 5 1500", "rc 6 1500", "rc 8 1500"]
-        for command in reset_commands:
-            self.send_command(command)
-        self.active_commands.clear()
+    # def reset_commands(self):
+    #     """Reset all RC commands"""
+    #     reset_commands = ["rc 1 1500", "rc 2 1500", "rc 3 1500", "rc 4 1500",
+    #                       "rc 5 1500", "rc 6 1500", "rc 8 1500"]
+    #     for command in reset_commands:
+    #         self.send_command(command)
+    #     self.active_commands.clear()
