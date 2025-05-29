@@ -93,7 +93,7 @@ class ControlPage(QWidget):
             
         """)
 
-        camera02_btn = QPushButton("Camera 02")
+        camera02_btn = QPushButton("CAMERA ON")
         camera02_btn.setFixedSize(150, 50)
         camera02_btn.setStyleSheet("""
             background-color: transparent;
@@ -468,82 +468,22 @@ class ControlPage(QWidget):
         qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
         label.setPixmap(QPixmap.fromImage(qt_image))
 
+    
+
+
+    def setup_camera_connections(self):
+        self.camera01_btn.clicked.connect(self.switch_cameras)
+        self.camera02_btn.clicked.connect(self.switch_cameras)
 
 
 
 
-
-
-
-
-
-
-# # Color detection Code
-#     def update_frame(self):
-#         ret, frame = self.cap.read()
-#         if ret:
-#             if self.is_detecting:
-#                 frame = self.detect_colors(frame)
-
-#             # Convert the frame to RGB (OpenCV uses BGR by default)
-#             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-#             # Convert to QImage and set it on the QLabel
-#             h, w, c = rgb_frame.shape
-#             q_img = QImage(rgb_frame.data, w, h, c * w, QImage.Format.Format_RGB888)
-#             self.main_cam.setPixmap(QPixmap.fromImage(q_img))
-
-#     def detect_colors(self, frame):
-#         # Convert the image to HSV color space
-#         hsv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-
-#         for color, (lower, upper) in self.color_ranges.items():
-#             # Create mask for each color range
-#             lower_bound = np.array(lower)
-#             upper_bound = np.array(upper)
-#             mask = cv2.inRange(hsv_frame, lower_bound, upper_bound)
-
-#             # Apply Gaussian blur to smooth the mask
-#             mask = cv2.GaussianBlur(mask, (5, 5), 0)
-
-#             # Morphological operations to remove small noise and fill gaps
-#             kernel = np.ones((5, 5), np.uint8)
-#             mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)  # Close gaps
-#             mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)  # Remove noise
-
-#             # Find contours of the detected color
-#             contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-#             for contour in contours:
-#                 if cv2.contourArea(contour) > 500:  # Filter out small contours
-#                     # Get the bounding box
-#                     x, y, w, h = cv2.boundingRect(contour)
-#                     # Draw the bounding box and label the color
-#                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-#                     cv2.putText(frame, color, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-
-#         return frame
-
-#     def toggle_detection(self):
-#         # Toggle the color detection state
-#         self.is_detecting = not self.is_detecting
-#         print(f"Color Detection is now: {'ON' if self.is_detecting else 'OFF'}")  # Debug print to verify state
-#         if self.is_detecting:
-#             self.task2_button.setText("Stop Detection")
-#         else:
-#             self.task2_button.setText("Cargo Detection")
-
-
-#     def closeEvent(self, event):
-#         # Release the webcam capture when closing the application
-#         self.cap.release()
-#         event.accept()
 
 
 
     def send_command(self, command):
         """Send command to Raspberry Pi MAVProxy server"""
-        HOST = "192.168.125.192"  # Change if necessary
+        HOST = "10.42.0.185"  # Change if necessary
         PORT = 7000
 
         try:
@@ -610,55 +550,75 @@ class ControlPage(QWidget):
 
         commands = []
 
-        # Forward/Backward
-        if axis_1 > 0.03:
-            value_3 = int(1550 - (axis_1 * 450))
-            value_4 = int(1450 + (axis_1 * 450))
-            commands.append(f"rc 3 {value_3}")
-            commands.append(f"rc 4 {value_4}")
+        if axis_1 > 0.03:  # BACKWARD (was originally FORWARD)
+            axis_1_abs = abs(axis_1)
+            thrust = int(1500 - (axis_1_abs * 450))  # Goes down to 1000
+            anti_thrust = int(1500 + (axis_1_abs * 450))  # Goes up to 2000
+            commands.append(f"rc 4 {thrust}")        # CW
+            commands.append(f"rc 5 {anti_thrust}")   # Inverted again
 
-        elif axis_1 < -0.03:
-            value_3 = int(1450 - (axis_1 * 450))
-            value_4 = int(1550 + (axis_1 * 450))
-            commands.append(f"rc 3 {value_3}")
-            commands.append(f"rc 4 {value_4}")
-
-        else:
-            commands.append("rc 3 1500")
-            commands.append("rc 4 1500")
-
-        # Left/Right
-        if axis_0 > 0.3:
-            value = int(1450 + (axis_0 * 450))
-            commands.append(f"rc 1 {value}")
-            commands.append(f"rc 2 {value}")
-
-        elif axis_0 < -0.3:
-            value = int(1550 - (-axis_0 * 450))
-            commands.append(f"rc 1 {value}")
-            commands.append(f"rc 2 {value}")
+        elif axis_1 < -0.03:  # FORWARD (was originally BACKWARD)
+            axis_1_abs = abs(axis_1)
+            thrust = int(1500 + (axis_1_abs * 450))  # Goes up to 2000
+            anti_thrust = int(1500 - (axis_1_abs * 450))  # Goes down to 1000
+            commands.append(f"rc 4 {thrust}")        # This spins ACW as expected
+            commands.append(f"rc 5 {anti_thrust}")   # Inverted because it's mounted opposite
 
         else:
-            commands.append("rc 1 1500")
-            commands.append("rc 2 1500")
+            # Neutral when joystick is centered
+            commands.append(f"rc 4 1500")
+            commands.append(f"rc 5 1500")
 
-        # Up/Down
-        if axis_5 > 0.03:
-            thrust = int(1500 + (axis_5 * 500))
-            thrust2 = int(1500 - (axis_5 * 500))
-            commands.append(f"rc 5 {thrust2}")
-            commands.append(f"rc 8 {thrust}")
+        # Left/Right (Axis 0): Right = axis_0 > 0.03, Left = axis_0 < -0.03
+        if axis_0 > 0.03:  # RIGHT TURN
+            axis_0_abs = abs(axis_0)
+            power = int(1500 + (axis_0_abs * 500))  # Max 2000
+            reverse_power = int(1500 - (axis_0_abs * 500))  # Min 1000
+            commands.append(f"rc 1 {reverse_power}")  # Clockwise
+            commands.append(f"rc 8 {reverse_power}")          # Anti-clockwise
 
-        elif axis_5 < -0.03:
-            thrust = int(1500 - (abs(axis_5) * 500))
-            commands.append(f"rc 5 {thrust}")
-            commands.append(f"rc 8 {thrust}")
+        elif axis_0 < -0.03:  # LEFT TURN
+            axis_0_abs = abs(axis_0)
+            power = int(1500 + (axis_0_abs * 500))  # Max 2000
+            reverse_power = int(1500 - (axis_0_abs * 500))  # Min 1000
+            commands.append(f"rc 1 {power}")         # Anti-clockwise
+            commands.append(f"rc 8 {power}") # Clockwise
 
         else:
-            commands.append("rc 5 1500")
-            commands.append("rc 6 1500")
-            commands.append("rc 7 1500")
-            commands.append("rc 8 1500")
+            commands.append(f"rc 1 1500")
+            commands.append(f"rc 8 1500")
+
+        MOTOR_NEUTRAL = 1500
+        MOTOR_MAX = 2000
+        MOTOR_MIN = 1000
+
+
+
+        if axis_5 > 0.03:  # DOWN
+            axis_5_abs = abs(axis_5)
+            thrust = int(1500 - (axis_5_abs * 450))  # CCW
+            thrust2 = int(1500 + (axis_5_abs * 450)) # CW
+
+            commands.append(f"rc 2 {thrust2}")     # CCW
+            commands.append(f"rc 3 {thrust}")    # CW
+            commands.append(f"rc 6 {thrust}")     # CCW
+            commands.append(f"rc 7 {thrust}")     # CCW
+
+        elif axis_5 < -0.03:  # UP
+            axis_5_abs = abs(axis_5)
+            thrust = int(1500 + (axis_5_abs * 450))  # CW
+            thrust2 = int(1500 - (axis_5_abs * 450)) # CCW
+
+            commands.append(f"rc 2 {thrust2}")     # CW
+            commands.append(f"rc 3 {thrust}")    # CCW
+            commands.append(f"rc 6 {thrust}")     # CW
+            commands.append(f"rc 7 {thrust}")     # CW
+
+        else:
+            commands.append(f"rc 2 {MOTOR_NEUTRAL}")
+            commands.append(f"rc 3 {MOTOR_NEUTRAL}")
+            commands.append(f"rc 6 {MOTOR_NEUTRAL}")
+            commands.append(f"rc 7 {MOTOR_NEUTRAL}")
 
         # Reset Hover
         if reset_button:
