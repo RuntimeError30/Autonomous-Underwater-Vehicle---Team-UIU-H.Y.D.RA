@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QVBoxLay
 from PyQt6.QtCore import QTimer, Qt, QThread, pyqtSignal
 from PyQt6.QtGui import QImage, QPixmap
 
-PI_IP = '192.168.125.192'  # Replace with your Raspberry Pi's IP
+PI_IP = '192.168.125.218'  # Replace with your Raspberry Pi's IP
 PI_PORT = 6000
 
 
@@ -131,3 +131,69 @@ if __name__ == "__main__":
     win.resize(640, 480)
     win.show()
     sys.exit(app.exec())
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# import socket
+
+# def send_command(command, host='192.168.125.218', port=6000):
+#     try:
+#         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+#             s.connect((host, port))
+#             s.sendall(command.encode())
+#             response = s.recv(1024).decode()
+#             print(f"Server responded: {response}")
+#     except ConnectionRefusedError:
+#         print("Failed to connect. Make sure the server is running.")
+#     except Exception as e:
+#         print(f"Error: {e}")
+
+# def main():
+#     print("Camera Client")
+#     print("Type 'CAM1', 'CAM2', or 'STOP' to control the cameras.")
+#     print("Type 'exit' to quit.")
+#     while True:
+#         cmd = input("Enter command: ").strip().upper()
+#         if cmd == "EXIT":
+#             break
+#         elif cmd in ("CAM1", "CAM2", "STOP"):
+#             send_command(cmd)
+#         else:
+#             print("Invalid command.")
+
+# if __name__ == "__main__":
+#     main()
