@@ -1,199 +1,61 @@
 import sys
 import cv2
-import socket
-from PyQt6.QtWidgets import QApplication, QWidget, QPushButton, QLabel, QVBoxLayout
-from PyQt6.QtCore import QTimer, Qt, QThread, pyqtSignal
+from PyQt6.QtWidgets import QApplication, QLabel, QWidget, QVBoxLayout
 from PyQt6.QtGui import QImage, QPixmap
-
-PI_IP = '192.168.125.218'  # Replace with your Raspberry Pi's IP
-PI_PORT = 6000
+from PyQt6.QtCore import QTimer
 
 
-class CommandSender(QThread):
-    finished = pyqtSignal(str)
-
-    def __init__(self, command):
-        super().__init__()
-        self.command = command
-
-    def run(self):
-        try:
-            with socket.create_connection((PI_IP, PI_PORT), timeout=2) as s:
-                s.sendall(self.command.encode())
-                response = s.recv(1024).decode()
-                self.finished.emit(response)
-        except Exception as e:
-            self.finished.emit(f"Error: {e}")
-
-
-class CameraApp(QWidget):
+class CameraViewer(QWidget):
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("Dual Camera Feed")
 
-        self.setWindowTitle("Camera Switcher")
+        # Labels for each camera
+        self.cam0_label = QLabel()
+        self.cam1_label = QLabel()
+        self.cam0_label.setText("Waiting for Camera 0...")
+        self.cam1_label.setText("Waiting for Camera 1...")
 
-        self.label = QLabel("No Video")
-        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.btn_cam1 = QPushButton("Cam 1")
-        self.btn_cam2 = QPushButton("Cam 2")
-        self.btn_stop = QPushButton("Stop")
-
+        # Layout
         layout = QVBoxLayout()
-        layout.addWidget(self.label)
-        layout.addWidget(self.btn_cam1)
-        layout.addWidget(self.btn_cam2)
-        layout.addWidget(self.btn_stop)
+        layout.addWidget(self.cam0_label)
+        layout.addWidget(self.cam1_label)
         self.setLayout(layout)
 
-        self.cap = None
+        # GStreamer pipelines
+        self.cap0 = cv2.VideoCapture(
+            'udpsrc port=5000 caps="application/x-rtp, media=video, encoding-name=H264, payload=96" ! '
+            'rtph264depay ! avdec_h264 ! videoconvert ! appsink',
+            cv2.CAP_GSTREAMER)
+
+        self.cap1 = cv2.VideoCapture(
+            'udpsrc port=5001 caps="application/x-rtp, media=video, encoding-name=H264, payload=97" ! '
+            'rtph264depay ! avdec_h264 ! videoconvert ! appsink',
+            cv2.CAP_GSTREAMER)
+
+        # Timers to update feeds
         self.timer = QTimer()
-        self.timer.timeout.connect(self.update_frame)
+        self.timer.timeout.connect(self.update_frames)
+        self.timer.start(30)
 
-        self.btn_cam1.clicked.connect(lambda: self.start_stream('CAM1'))
-        self.btn_cam2.clicked.connect(lambda: self.start_stream('CAM2'))
-        self.btn_stop.clicked.connect(self.stop_stream)
+    def update_frames(self):
+        self.show_frame(self.cap0, self.cam0_label)
+        self.show_frame(self.cap1, self.cam1_label)
 
-        self.cmd_thread = None
-
-    def send_command(self, command, callback=None):
-        # If previous thread is running, wait for it to finish before starting a new one
-        if self.cmd_thread and self.cmd_thread.isRunning():
-            self.cmd_thread.quit()
-            self.cmd_thread.wait()
-
-        self.cmd_thread = CommandSender(command)
-        if callback:
-            self.cmd_thread.finished.connect(callback)
-        self.cmd_thread.finished.connect(lambda resp: print("Server response:", resp))
-        self.cmd_thread.start()
-
-    def start_stream(self, cam_id):
-        self.stop_stream()
-        # Start command and after it's done, setup stream
-        self.send_command(cam_id, lambda _: self.setup_stream(cam_id))
-
-    def setup_stream(self, cam_id):
-        port_map = {
-            'CAM1': 5001,
-            'CAM2': 5002,
-        }
-        cam_port = port_map.get(cam_id, 5001)
-        QTimer.singleShot(1000, lambda: self.init_camera(cam_port))
-
-    def init_camera(self, cam_port=5001):
-        if self.cap:
-            self.cap.release()
-
-        pipeline = (
-            f"udpsrc port={cam_port} caps=\"application/x-rtp, media=video, encoding-name=H264, payload=96\" ! "
-            "rtph264depay ! avdec_h264 ! videoconvert ! appsink"
-        )
-        print("GStreamer pipeline:", pipeline)
-        self.cap = cv2.VideoCapture(pipeline, cv2.CAP_GSTREAMER)
-
-        if self.cap.isOpened():
-            self.timer.start(30)
+    def show_frame(self, cap, label):
+        ret, frame = cap.read()
+        if ret:
+            # Convert BGR to RGB
+            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            h, w, ch = rgb_image.shape
+            bytes_per_line = ch * w
+            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+            label.setPixmap(QPixmap.fromImage(qt_image))
         else:
-            print("Failed to open video capture")
-
-    def update_frame(self):
-        if self.cap and self.cap.isOpened():
-            ret, frame = self.cap.read()
-            if ret:
-                rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                h, w, ch = rgb.shape
-                img = QImage(rgb.data, w, h, ch * w, QImage.Format.Format_RGB888)
-                self.label.setPixmap(QPixmap.fromImage(img))
-            else:
-                print("Failed to read frame.")
-        else:
-            self.label.setText("No stream")
-
-    def stop_stream(self):
-        self.timer.stop()
-        if self.cap:
-            self.cap.release()
-            self.cap = None
-        self.send_command("STOP")
-        self.label.setText("Stopped")
-
-    def closeEvent(self, event):
-        self.stop_stream()
-        if self.cmd_thread and self.cmd_thread.isRunning():
-            self.cmd_thread.quit()
-            self.cmd_thread.wait()
-        event.accept()
+            label.setText("No feed")
 
 
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
-    win = CameraApp()
-    win.resize(640, 480)
-    win.show()
-    sys.exit(app.exec())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# import socket
-
-# def send_command(command, host='192.168.125.218', port=6000):
-#     try:
-#         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-#             s.connect((host, port))
-#             s.sendall(command.encode())
-#             response = s.recv(1024).decode()
-#             print(f"Server responded: {response}")
-#     except ConnectionRefusedError:
-#         print("Failed to connect. Make sure the server is running.")
-#     except Exception as e:
-#         print(f"Error: {e}")
-
-# def main():
-#     print("Camera Client")
-#     print("Type 'CAM1', 'CAM2', or 'STOP' to control the cameras.")
-#     print("Type 'exit' to quit.")
-#     while True:
-#         cmd = input("Enter command: ").strip().upper()
-#         if cmd == "EXIT":
-#             break
-#         elif cmd in ("CAM1", "CAM2", "STOP"):
-#             send_command(cmd)
-#         else:
-#             print("Invalid command.")
-
-# if __name__ == "__main__":
-#     main()
+app = QApplication(sys.argv)
+viewer = CameraViewer()
+viewer.show()
+sys.exit(app.exec())
