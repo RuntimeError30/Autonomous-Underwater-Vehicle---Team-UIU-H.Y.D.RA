@@ -23,15 +23,20 @@ class CameraViewer(QWidget):
         self.setLayout(layout)
 
         # GStreamer pipelines
-        self.cap0 = cv2.VideoCapture(
-            'udpsrc port=5000 caps="application/x-rtp, media=video, encoding-name=H264, payload=96" ! '
-            'rtph264depay ! avdec_h264 ! videoconvert ! appsink',
-            cv2.CAP_GSTREAMER)
+        pipeline0 = (
+            "udpsrc port=5000 ! application/x-rtp, encoding-name=H264, payload=96 ! "
+            "rtph264depay ! avdec_h264 ! videoconvert ! appsink"
+        )
 
-        self.cap1 = cv2.VideoCapture(
-            'udpsrc port=5001 caps="application/x-rtp, media=video, encoding-name=H264, payload=97" ! '
-            'rtph264depay ! avdec_h264 ! videoconvert ! appsink',
-            cv2.CAP_GSTREAMER)
+        pipeline1 = (
+            "udpsrc port=5001 ! application/x-rtp, encoding-name=H264, payload=97 ! "
+            "rtph264depay ! avdec_h264 ! videoconvert ! appsink"
+        )
+
+        self.cap0 = cv2.VideoCapture(pipeline0, cv2.CAP_GSTREAMER)
+        self.cap1 = cv2.VideoCapture(pipeline1, cv2.CAP_GSTREAMER)
+
+        
 
         # Timers to update feeds
         self.timer = QTimer()

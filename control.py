@@ -23,6 +23,33 @@ from PyQt6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor, QPainterPath,
 from PyQt6.QtCore import Qt, QRectF, QTimer
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 
+
+from PyQt6.QtCore import QThread, pyqtSignal
+import cv2
+
+class CameraWorker(QThread):
+    frame_ready = pyqtSignal(object)  # Signal to send frame to GUI
+
+    def __init__(self, pipeline, parent=None):
+        super().__init__(parent)
+        self.pipeline = pipeline
+        self.running = True
+
+    def run(self):
+        cap = cv2.VideoCapture(self.pipeline, cv2.CAP_GSTREAMER)
+
+        while self.running and cap.isOpened():
+            ret, frame = cap.read()
+            if ret:
+                self.frame_ready.emit(frame)
+        cap.release()
+
+    def stop(self):
+        self.running = False
+        self.wait()
+
+
+
 class ControlPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -33,7 +60,8 @@ class ControlPage(QWidget):
         self.timer.timeout.connect(self.read_joystick)  
         self.timer.start(50)  # Read joystick every 50ms
         self.last_command_time = 0
-        self.command_delay = 0.1  
+        self.command_delay = 0.1 
+
 
     def init_ui(self):
         main_layout = QVBoxLayout(self) 
@@ -89,7 +117,6 @@ class ControlPage(QWidget):
         self.main_camera = QLabel()
         self.main_camera.setFixedSize(960, 540)
         self.main_camera.setStyleSheet(" border: 1px solid #005767; border-radius: 20px;")
-
 
 
         # Thrusters and Status
@@ -412,44 +439,44 @@ class ControlPage(QWidget):
         main_layout.addStretch()
 
 
+    def start_video_threads(self):
+        pipeline0 = (
+            "udpsrc port=5000 ! application/x-rtp, encoding-name=H264, payload=96 ! "
+            "rtph264depay ! avdec_h264 ! videoconvert ! appsink"
+        )
+
+        pipeline1 = (
+            "udpsrc port=5001 ! application/x-rtp, encoding-name=H264, payload=97 ! "
+            "rtph264depay ! avdec_h264 ! videoconvert ! appsink"
+        )
+
+        self.cam0_worker = CameraWorker(pipeline0)
+        self.cam1_worker = CameraWorker(pipeline1)
+
+        self.cam0_worker.frame_ready.connect(lambda f: self.display_frame(f, self.small_frame))
+        self.cam1_worker.frame_ready.connect(lambda f: self.display_frame(f, self.main_camera))
+
+        self.cam0_worker.start()
+        self.cam1_worker.start()
+
+
+
+    def display_frame(self, frame, label):
+        rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        h, w, ch = rgb_image.shape
+        bytes_per_line = ch * w
+        qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+        label.setPixmap(QPixmap.fromImage(qt_image))
 
 
 
 
-        # Camera functions
-        # GStreamer pipelines
-        self.cap0 = cv2.VideoCapture(
-            'udpsrc port=5000 caps="application/x-rtp, media=video, encoding-name=H264, payload=96" ! '
-            'rtph264depay ! avdec_h264 ! videoconvert ! appsink',
-            cv2.CAP_GSTREAMER)
 
-        self.cap1 = cv2.VideoCapture(
-            'udpsrc port=5001 caps="application/x-rtp, media=video, encoding-name=H264, payload=97" ! '
-            'rtph264depay ! avdec_h264 ! videoconvert ! appsink',
-            cv2.CAP_GSTREAMER)
-        
-        # Timers to update feeds
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update_frames)
-        self.timer.start(30)
 
-        self.setLayout(main_layout)
 
-    def update_frames(self):
-        self.show_frame(self.cap0, self.small_frame)
-        self.show_frame(self.cap1, self.main_camera)
 
-    def show_frame(self, cap, label):
-        ret, frame = cap.read()
-        if ret:
-            # Convert BGR to RGB
-            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            h, w, ch = rgb_image.shape
-            bytes_per_line = ch * w
-            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
-            self.small_frame.setPixmap(QPixmap.fromImage(qt_image))
-        else:
-            self.small_frame.setText("No feed")
+
+
 
 # # Color detection Code
 #     def update_frame(self):
@@ -514,158 +541,158 @@ class ControlPage(QWidget):
 
 
 
-    # def send_command(self, command):
-    #     """Send command to Raspberry Pi MAVProxy server"""
-    #     HOST = "192.168.125.27"  # Change if necessary
-    #     PORT = 7000
+    def send_command(self, command):
+        """Send command to Raspberry Pi MAVProxy server"""
+        HOST = "192.168.125.192"  # Change if necessary
+        PORT = 7000
 
-    #     try:
-    #         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-    #             client_socket.connect((HOST, PORT))
-    #             client_socket.sendall(command.encode())
-    #             print(f"Sent: {command}")
-    #     except Exception as e:
-    #         print(f"Error sending command: {e}")
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
+                client_socket.connect((HOST, PORT))
+                client_socket.sendall(command.encode())
+                print(f"Sent: {command}")
+        except Exception as e:
+            print(f"Error sending command: {e}")
 
-    # def keyPressEvent(self, event: QKeyEvent):
-    #     """Handle keyboard input"""
-    #     key_map = {
-    #         Qt.Key.Key_W: ["rc 3 1000", "rc 4 1000"],  # Forward
-    #         Qt.Key.Key_S: ["rc 3 2000", "rc 4 2000"],  # Backward
-    #         Qt.Key.Key_A: ["rc 1 2000", "rc 2 2000"],  # Left
-    #         Qt.Key.Key_D: ["rc 1 1000", "rc 2 1000"],  # Right
-    #         Qt.Key.Key_Up: ["rc 5 1000", "rc 6 1000"],  # Up Tilt
-    #         Qt.Key.Key_Down: ["rc 5 2000", "rc 6 2000"],  # Down Tilt
-    #         Qt.Key.Key_U: ["rc 5 1000", "rc 8 2000"],  # Up Normal
-    #     }
+    def keyPressEvent(self, event: QKeyEvent):
+        """Handle keyboard input"""
+        key_map = {
+            Qt.Key.Key_W: ["rc 3 1000", "rc 4 1000"],  # Forward
+            Qt.Key.Key_S: ["rc 3 2000", "rc 4 2000"],  # Backward
+            Qt.Key.Key_A: ["rc 1 2000", "rc 2 2000"],  # Left
+            Qt.Key.Key_D: ["rc 1 1000", "rc 2 1000"],  # Right
+            Qt.Key.Key_Up: ["rc 5 1000", "rc 6 1000"],  # Up Tilt
+            Qt.Key.Key_Down: ["rc 5 2000", "rc 6 2000"],  # Down Tilt
+            Qt.Key.Key_U: ["rc 5 1000", "rc 8 2000"],  # Up Normal
+        }
 
-    #     if event.key() in key_map:
-    #         commands = key_map[event.key()]
-    #         for command in commands:
-    #             if command not in self.active_commands:
-    #                 self.active_commands.append(command)
-    #             self.send_command(command)
-    #             self.last_command_time = time.time()
+        if event.key() in key_map:
+            commands = key_map[event.key()]
+            for command in commands:
+                if command not in self.active_commands:
+                    self.active_commands.append(command)
+                self.send_command(command)
+                self.last_command_time = time.time()
 
-    #     elif event.key() == Qt.Key.Key_Q:  # Reset command
-    #         self.reset_commands()
+        elif event.key() == Qt.Key.Key_Q:  # Reset command
+            self.reset_commands()
 
-    # def joystick_init(self):
-    #     """Initialize joystick"""
-    #     pygame.init()
-    #     pygame.joystick.init()
-    #     if pygame.joystick.get_count() > 0:
-    #         self.joystick = pygame.joystick.Joystick(0)
-    #         self.joystick.init()
-    #         print("Joystick Connected!")
-    #     else:
-    #         self.joystick = None
-    #         print("No Joystick Found!")
+    def joystick_init(self):
+        """Initialize joystick"""
+        pygame.init()
+        pygame.joystick.init()
+        if pygame.joystick.get_count() > 0:
+            self.joystick = pygame.joystick.Joystick(0)
+            self.joystick.init()
+            print("Joystick Connected!")
+        else:
+            self.joystick = None
+            print("No Joystick Found!")
 
-    # def read_joystick(self):
-    #     """Read joystick input and send appropriate RC commands"""
-    #     if not self.joystick:
-    #         return
+    def read_joystick(self):
+        """Read joystick input and send appropriate RC commands"""
+        if not self.joystick:
+            return
 
-    #     pygame.event.pump()
+        pygame.event.pump()
 
-    #     # Axis values
-    #     axis_0 = self.joystick.get_axis(0)  # Left/Right
-    #     axis_1 = self.joystick.get_axis(1)  # Forward/Backward
-    #     axis_5 = self.joystick.get_axis(3)  # Up/Down
-    #     axis_4 = self.joystick.get_axis(4)  # Forward Tilt
+        # Axis values
+        axis_0 = self.joystick.get_axis(0)  # Left/Right
+        axis_1 = self.joystick.get_axis(1)  # Forward/Backward
+        axis_5 = self.joystick.get_axis(3)  # Up/Down
+        axis_4 = self.joystick.get_axis(4)  # Forward Tilt
 
-    #     # Button states
-    #     reset_button = self.joystick.get_button(0)  # Reset Hover
-    #     stop_button = self.joystick.get_button(9)  # Stop everything
-    #     send_arm = self.joystick.get_button(0)  # Arm/Disarm
-    #     close_arm = self.joystick.get_button(1)  # Close Arm
+        # Button states
+        reset_button = self.joystick.get_button(0)  # Reset Hover
+        stop_button = self.joystick.get_button(9)  # Stop everything
+        send_arm = self.joystick.get_button(0)  # Arm/Disarm
+        close_arm = self.joystick.get_button(1)  # Close Arm
 
-    #     commands = []
+        commands = []
 
-    #     # Forward/Backward
-    #     if axis_1 > 0.03:
-    #         value_3 = int(1550 - (axis_1 * 450))
-    #         value_4 = int(1450 + (axis_1 * 450))
-    #         commands.append(f"rc 3 {value_3}")
-    #         commands.append(f"rc 4 {value_4}")
+        # Forward/Backward
+        if axis_1 > 0.03:
+            value_3 = int(1550 - (axis_1 * 450))
+            value_4 = int(1450 + (axis_1 * 450))
+            commands.append(f"rc 3 {value_3}")
+            commands.append(f"rc 4 {value_4}")
 
-    #     elif axis_1 < -0.03:
-    #         value_3 = int(1450 - (axis_1 * 450))
-    #         value_4 = int(1550 + (axis_1 * 450))
-    #         commands.append(f"rc 3 {value_3}")
-    #         commands.append(f"rc 4 {value_4}")
+        elif axis_1 < -0.03:
+            value_3 = int(1450 - (axis_1 * 450))
+            value_4 = int(1550 + (axis_1 * 450))
+            commands.append(f"rc 3 {value_3}")
+            commands.append(f"rc 4 {value_4}")
 
-    #     else:
-    #         commands.append("rc 3 1500")
-    #         commands.append("rc 4 1500")
+        else:
+            commands.append("rc 3 1500")
+            commands.append("rc 4 1500")
 
-    #     # Left/Right
-    #     if axis_0 > 0.3:
-    #         value = int(1450 + (axis_0 * 450))
-    #         commands.append(f"rc 1 {value}")
-    #         commands.append(f"rc 2 {value}")
+        # Left/Right
+        if axis_0 > 0.3:
+            value = int(1450 + (axis_0 * 450))
+            commands.append(f"rc 1 {value}")
+            commands.append(f"rc 2 {value}")
 
-    #     elif axis_0 < -0.3:
-    #         value = int(1550 - (-axis_0 * 450))
-    #         commands.append(f"rc 1 {value}")
-    #         commands.append(f"rc 2 {value}")
+        elif axis_0 < -0.3:
+            value = int(1550 - (-axis_0 * 450))
+            commands.append(f"rc 1 {value}")
+            commands.append(f"rc 2 {value}")
 
-    #     else:
-    #         commands.append("rc 1 1500")
-    #         commands.append("rc 2 1500")
+        else:
+            commands.append("rc 1 1500")
+            commands.append("rc 2 1500")
 
-    #     # Up/Down
-    #     if axis_5 > 0.03:
-    #         thrust = int(1500 + (axis_5 * 500))
-    #         thrust2 = int(1500 - (axis_5 * 500))
-    #         commands.append(f"rc 5 {thrust2}")
-    #         commands.append(f"rc 8 {thrust}")
+        # Up/Down
+        if axis_5 > 0.03:
+            thrust = int(1500 + (axis_5 * 500))
+            thrust2 = int(1500 - (axis_5 * 500))
+            commands.append(f"rc 5 {thrust2}")
+            commands.append(f"rc 8 {thrust}")
 
-    #     elif axis_5 < -0.03:
-    #         thrust = int(1500 - (abs(axis_5) * 500))
-    #         commands.append(f"rc 5 {thrust}")
-    #         commands.append(f"rc 8 {thrust}")
+        elif axis_5 < -0.03:
+            thrust = int(1500 - (abs(axis_5) * 500))
+            commands.append(f"rc 5 {thrust}")
+            commands.append(f"rc 8 {thrust}")
 
-    #     else:
-    #         commands.append("rc 5 1500")
-    #         commands.append("rc 6 1500")
-    #         commands.append("rc 7 1500")
-    #         commands.append("rc 8 1500")
+        else:
+            commands.append("rc 5 1500")
+            commands.append("rc 6 1500")
+            commands.append("rc 7 1500")
+            commands.append("rc 8 1500")
 
-    #     # Reset Hover
-    #     if reset_button:
-    #         commands.append("rc 5 1500")
-    #         commands.append("rc 6 1500")
-    #         commands.append("rc 7 1500")
-    #         commands.append("rc 8 1500")
+        # Reset Hover
+        if reset_button:
+            commands.append("rc 5 1500")
+            commands.append("rc 6 1500")
+            commands.append("rc 7 1500")
+            commands.append("rc 8 1500")
 
-    #     # Arm Commands
-    #     if send_arm:
-    #         commands.append("open")
-    #     elif close_arm:
-    #         commands.append("close")
+        # Arm Commands
+        if send_arm:
+            commands.append("open")
+        elif close_arm:
+            commands.append("close")
 
-    #     # Stop Everything
-    #     if stop_button:
-    #         commands.extend([
-    #             "rc 3 1500", "rc 4 1500", "rc 1 1500", "rc 2 1500",
-    #             "rc 5 1500", "rc 6 1500", "rc 8 1500"
-    #         ])
+        # Stop Everything
+        if stop_button:
+            commands.extend([
+                "rc 3 1500", "rc 4 1500", "rc 1 1500", "rc 2 1500",
+                "rc 5 1500", "rc 6 1500", "rc 8 1500"
+            ])
 
-    #     # Throttle sending commands based on time delay
-    #     current_time = time.time()
-    #     if current_time - self.last_command_time > self.command_delay:
-    #         for command in commands:
-    #             if command not in self.active_commands:
-    #                 self.active_commands.append(command)
-    #             self.send_command(command)
-    #         self.last_command_time = current_time
+        # Throttle sending commands based on time delay
+        current_time = time.time()
+        if current_time - self.last_command_time > self.command_delay:
+            for command in commands:
+                if command not in self.active_commands:
+                    self.active_commands.append(command)
+                self.send_command(command)
+            self.last_command_time = current_time
 
-    # def reset_commands(self):
-    #     """Reset all RC commands"""
-    #     reset_commands = ["rc 1 1500", "rc 2 1500", "rc 3 1500", "rc 4 1500",
-    #                       "rc 5 1500", "rc 6 1500", "rc 8 1500"]
-    #     for command in reset_commands:
-    #         self.send_command(command)
-    #     self.active_commands.clear()
+    def reset_commands(self):
+        """Reset all RC commands"""
+        reset_commands = ["rc 1 1500", "rc 2 1500", "rc 3 1500", "rc 4 1500",
+                          "rc 5 1500", "rc 6 1500", "rc 8 1500"]
+        for command in reset_commands:
+            self.send_command(command)
+        self.active_commands.clear()

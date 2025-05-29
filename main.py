@@ -33,6 +33,7 @@ class MainWindow(QMainWindow):
 
 
         self.control_page = ControlPage(self)
+        self.control_page.start_video_threads()
         self.sensor_page = SensorPage(self)
         self.config_page = ConfigPage(self)
 
