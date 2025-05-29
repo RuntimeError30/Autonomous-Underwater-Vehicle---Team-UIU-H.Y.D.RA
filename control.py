@@ -42,9 +42,9 @@ class ControlPage(QWidget):
 
         frame_buttonLayout = QVBoxLayout()
         
-        small_frame = QLabel()
-        small_frame.setStyleSheet("background-color: transparent; border: 1px solid #005767; border-radius: 20px; margin-bottom: 10px;")
-        small_frame.setFixedSize(384, 216)
+        self.small_frame = QLabel()
+        self.small_frame.setStyleSheet(" border: 1px solid #005767; border-radius: 20px; margin-bottom: 10px;")
+        self.small_frame.setFixedSize(384, 216)
 
         camerabtn_label = QLabel("SWITCH CAMERAS")
         camerabtn_label.setStyleSheet("""color: white; font-size: 12px; font-weight: bold; margin-top: 20px;""")
@@ -78,7 +78,7 @@ class ControlPage(QWidget):
             
         """)
 
-        frame_buttonLayout.addWidget(small_frame)
+        frame_buttonLayout.addWidget(self.small_frame)
         frame_buttonLayout.addWidget(camerabtn_label)
         frame_buttonLayout.addWidget(camera01_btn)
         frame_buttonLayout.addWidget(camera02_btn)
@@ -86,9 +86,9 @@ class ControlPage(QWidget):
 
 
         # Main camera display
-        main_camera = QLabel()
-        main_camera.setFixedSize(960, 540)
-        main_camera.setStyleSheet("background-color: transparent; border: 1px solid #005767; border-radius: 20px;")
+        self.main_camera = QLabel()
+        self.main_camera.setFixedSize(960, 540)
+        self.main_camera.setStyleSheet(" border: 1px solid #005767; border-radius: 20px;")
 
 
 
@@ -301,14 +301,13 @@ class ControlPage(QWidget):
 
         control_status.setLayout(control_layout)
 
-
         thrusterstatus_layout.addWidget(status_container)
         thrusterstatus_layout.addWidget(control_status)
         thrusterstatus_layout.addStretch()
 
 
         main_row.addLayout(frame_buttonLayout)
-        main_row.addWidget(main_camera, alignment=Qt.AlignmentFlag.AlignTop)
+        main_row.addWidget(self.main_camera, alignment=Qt.AlignmentFlag.AlignTop)
         main_row.addLayout(thrusterstatus_layout)
         
 
@@ -412,7 +411,45 @@ class ControlPage(QWidget):
         main_layout.addLayout(second_row)
         main_layout.addStretch()
 
+
+
+
+
+
+        # Camera functions
+        # GStreamer pipelines
+        self.cap0 = cv2.VideoCapture(
+            'udpsrc port=5000 caps="application/x-rtp, media=video, encoding-name=H264, payload=96" ! '
+            'rtph264depay ! avdec_h264 ! videoconvert ! appsink',
+            cv2.CAP_GSTREAMER)
+
+        self.cap1 = cv2.VideoCapture(
+            'udpsrc port=5001 caps="application/x-rtp, media=video, encoding-name=H264, payload=97" ! '
+            'rtph264depay ! avdec_h264 ! videoconvert ! appsink',
+            cv2.CAP_GSTREAMER)
+        
+        # Timers to update feeds
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update_frames)
+        self.timer.start(30)
+
         self.setLayout(main_layout)
+
+    def update_frames(self):
+        self.show_frame(self.cap0, self.small_frame)
+        self.show_frame(self.cap1, self.main_camera)
+
+    def show_frame(self, cap, label):
+        ret, frame = cap.read()
+        if ret:
+            # Convert BGR to RGB
+            rgb_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            h, w, ch = rgb_image.shape
+            bytes_per_line = ch * w
+            qt_image = QImage(rgb_image.data, w, h, bytes_per_line, QImage.Format.Format_RGB888)
+            self.small_frame.setPixmap(QPixmap.fromImage(qt_image))
+        else:
+            self.small_frame.setText("No feed")
 
 # # Color detection Code
 #     def update_frame(self):
@@ -479,7 +516,7 @@ class ControlPage(QWidget):
 
     def send_command(self, command):
         """Send command to Raspberry Pi MAVProxy server"""
-        HOST = "192.168.2.3"  # Change if necessary
+        HOST = "192.168.125.27"  # Change if necessary
         PORT = 7000
 
         try:
