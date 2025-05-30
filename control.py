@@ -20,12 +20,28 @@ from PyQt6.QtWidgets import (
     QGraphicsOpacityEffect
 )
 from PyQt6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor, QPainterPath, QKeyEvent, QPixmap
-from PyQt6.QtCore import Qt, QRectF, QTimer
+from PyQt6.QtCore import Qt, QRectF, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
-
-
-from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtCore import QThread
+from arm import ArmController
 import cv2
+
+
+class ArmThread(QThread):
+    def __init__(self, parent = None):
+        super().__init__(parent)
+        self.worker = ArmController()
+
+    def run(self):
+        try:
+            self.worker.run()
+        except Exception as e:
+            print(f"Arm Controller Error: {e}")
+            
+    def stop(self):
+        self.worker.stop()
+        self.quit()
+        self.wait()
 
 class CameraWorker(QThread):
     frame_ready = pyqtSignal(object)  # Signal to send frame to GUI
@@ -52,6 +68,7 @@ class CameraWorker(QThread):
 
 class ControlPage(QWidget):
     def __init__(self, parent=None):
+        
         super().__init__(parent)
         self.init_ui()
         self.active_commands = []  # Store active commands
@@ -521,13 +538,26 @@ class ControlPage(QWidget):
         """Initialize joystick"""
         pygame.init()
         pygame.joystick.init()
-        if pygame.joystick.get_count() > 0:
-            self.joystick = pygame.joystick.Joystick(0)
-            self.joystick.init()
-            print("Joystick Connected!")
-        else:
+
+        if pygame.joystick.get_count() == 0:
+            print("No Joystick has been detected.")
             self.joystick = None
-            print("No Joystick Found!")
+            return
+
+        joystick = pygame.joystick.Joystick(0)
+        joystick.init()
+        joystick_name = joystick.get_name()
+        print(f"Detected joystick: {joystick_name}")
+
+        ALLOWED_CONTROLLER_NAME = "Zikway HID Gamepad"
+        if joystick_name != ALLOWED_CONTROLLER_NAME:
+            print(f"This program only works with: {ALLOWED_CONTROLLER_NAME}")
+            self.joystick = None
+            return
+
+        self.joystick = joystick
+        print("Zikway Gamepad Connected!")
+
 
     def read_joystick(self):
         """Read joystick input and send appropriate RC commands"""
@@ -656,3 +686,7 @@ class ControlPage(QWidget):
         for command in reset_commands:
             self.send_command(command)
         self.active_commands.clear()
+
+    def closeEvent(self, event):
+        self.arm_thread.stop()
+        event.accept()

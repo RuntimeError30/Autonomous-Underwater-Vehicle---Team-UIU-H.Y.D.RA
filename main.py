@@ -4,6 +4,7 @@ from PyQt6.QtGui import QIcon
 import sys
 
 from control import ControlPage
+from control import ArmThread
 from sensor import SensorPage
 from configuration import ConfigPage
 
@@ -36,6 +37,10 @@ class MainWindow(QMainWindow):
         self.control_page.start_video_threads()
         self.sensor_page = SensorPage(self)
         self.config_page = ConfigPage(self)
+
+        # Threded        
+        self.control_page.arm_thread = ArmThread()
+        self.control_page.arm_thread.start()
 
         self.stacked_widget.addWidget(self.control_page)
         self.stacked_widget.addWidget(self.sensor_page)
