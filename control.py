@@ -23,25 +23,24 @@ from PyQt6.QtGui import QPixmap, QImage, QPainter, QBrush, QColor, QPainterPath,
 from PyQt6.QtCore import Qt, QRectF, QTimer, pyqtSignal
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QLabel
 from PyQt6.QtCore import QThread
-from arm import ArmController
 import cv2
 
 
-class ArmThread(QThread):
-    def __init__(self, parent = None):
-        super().__init__(parent)
-        self.worker = ArmController()
+# class ArmThread(QThread):
+#     def __init__(self, parent = None):
+#         super().__init__(parent)
+#         self.worker = ArmController()
 
-    def run(self):
-        try:
-            self.worker.run()
-        except Exception as e:
-            print(f"Arm Controller Error: {e}")
+#     def run(self):
+#         try:
+#             self.worker.run()
+#         except Exception as e:
+#             print(f"Arm Controller Error: {e}")
             
-    def stop(self):
-        self.worker.stop()
-        self.quit()
-        self.wait()
+#     def stop(self):
+#         self.worker.stop()
+#         self.quit()
+#         self.wait()
 
 class CameraWorker(QThread):
     frame_ready = pyqtSignal(object)  # Signal to send frame to GUI
@@ -50,6 +49,7 @@ class CameraWorker(QThread):
         super().__init__(parent)
         self.pipeline = pipeline
         self.running = True
+        # self.joystick_name = self.joystick_init()
 
     def run(self):
         cap = cv2.VideoCapture(self.pipeline, cv2.CAP_GSTREAMER)
@@ -534,29 +534,45 @@ class ControlPage(QWidget):
         elif event.key() == Qt.Key.Key_Q:  # Reset command
             self.reset_commands()
 
+            
     def joystick_init(self):
-        """Initialize joystick"""
+        """Initialize only the Zikway HID gamepad"""
         pygame.init()
         pygame.joystick.init()
+        
+        found = False
+        for i in range(pygame.joystick.get_count()):
+            joystick = pygame.joystick.Joystick(i)
+            joystick.init()
+            name = joystick.get_name()
+            print(f"Detected joystick: {name}")
+            
+            if "Zikway" in name:
+                self.joystick = joystick
+                found = True
+                print("✅ Zikway Gamepad Connected!")
+                break
+            else:
+                joystick.quit()  # optional: release non-Zikway joystick
 
-        if pygame.joystick.get_count() == 0:
-            print("No Joystick has been detected.")
+        if not found:
             self.joystick = None
-            return
+            print("❌ Zikway Gamepad Not Found!")
 
-        joystick = pygame.joystick.Joystick(0)
-        joystick.init()
-        joystick_name = joystick.get_name()
-        print(f"Detected joystick: {joystick_name}")
 
-        ALLOWED_CONTROLLER_NAME = "Zikway HID Gamepad"
-        if joystick_name != ALLOWED_CONTROLLER_NAME:
-            print(f"This program only works with: {ALLOWED_CONTROLLER_NAME}")
-            self.joystick = None
-            return
 
-        self.joystick = joystick
-        print("Zikway Gamepad Connected!")
+    # def joystick_init(self):
+    #     """Initialize joystick"""
+    #     pygame.init()
+    #     pygame.joystick.init()
+    #     if pygame.joystick.get_count() > 0:
+    #         self.joystick = pygame.joystick.Joystick(0)
+    #         self.joystick.init()
+    #         print("Joystick Connected!")
+    #     else:
+    #         self.joystick = None
+    #         print("No Joystick Found!")
+
 
 
     def read_joystick(self):
@@ -605,14 +621,14 @@ class ControlPage(QWidget):
             power = int(1500 + (axis_0_abs * 500))  # Max 2000
             reverse_power = int(1500 - (axis_0_abs * 500))  # Min 1000
             commands.append(f"rc 1 {reverse_power}")  # Clockwise
-            commands.append(f"rc 8 {reverse_power}")          # Anti-clockwise
+            commands.append(f"rc 8 {power}")          # Anti-clockwise
 
         elif axis_0 < -0.03:  # LEFT TURN
             axis_0_abs = abs(axis_0)
             power = int(1500 + (axis_0_abs * 500))  # Max 2000
             reverse_power = int(1500 - (axis_0_abs * 500))  # Min 1000
             commands.append(f"rc 1 {power}")         # Anti-clockwise
-            commands.append(f"rc 8 {power}") # Clockwise
+            commands.append(f"rc 8 {reverse_power}") # Clockwise
 
         else:
             commands.append(f"rc 1 1500")
@@ -630,8 +646,8 @@ class ControlPage(QWidget):
             thrust2 = int(1500 + (axis_5_abs * 450)) # CW
 
             commands.append(f"rc 2 {thrust2}")     # CCW
-            commands.append(f"rc 3 {thrust}")    # CW
-            commands.append(f"rc 6 {thrust}")     # CCW
+            commands.append(f"rc 3 {thrust2}")    # CW
+            commands.append(f"rc 6 {thrust2}")     # CCW
             commands.append(f"rc 7 {thrust}")     # CCW
 
         elif axis_5 < -0.03:  # UP
@@ -640,8 +656,8 @@ class ControlPage(QWidget):
             thrust2 = int(1500 - (axis_5_abs * 450)) # CCW
 
             commands.append(f"rc 2 {thrust2}")     # CW
-            commands.append(f"rc 3 {thrust}")    # CCW
-            commands.append(f"rc 6 {thrust}")     # CW
+            commands.append(f"rc 3 {thrust2}")    # CCW
+            commands.append(f"rc 6 {thrust2}")     # CW
             commands.append(f"rc 7 {thrust}")     # CW
 
         else:

@@ -4,7 +4,7 @@ from PyQt6.QtGui import QIcon
 import sys
 
 from control import ControlPage
-from control import ArmThread
+# from control import ArmThread
 from sensor import SensorPage
 from configuration import ConfigPage
 
@@ -18,6 +18,8 @@ class MainWindow(QMainWindow):
 
         self.current_mode = "dark"
         self.setStyleSheet(self.dark_mode)
+
+
 
 
         self.central_widget = QWidget()
@@ -38,9 +40,9 @@ class MainWindow(QMainWindow):
         self.sensor_page = SensorPage(self)
         self.config_page = ConfigPage(self)
 
-        # Threded        
-        self.control_page.arm_thread = ArmThread()
-        self.control_page.arm_thread.start()
+        # # Threded        
+        # self.control_page.arm_thread = ArmThread()
+        # self.control_page.arm_thread.start()
 
         self.stacked_widget.addWidget(self.control_page)
         self.stacked_widget.addWidget(self.sensor_page)
