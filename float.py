@@ -16,7 +16,7 @@ class FloatDashboard(QWidget):
     def __init__(self, port='/dev/ttyACM0', baudrate=9600):
         super().__init__()
         self.setWindowTitle("MATE FLOAT DASHBOARD")
-        self.setGeometry(100, 100, 1200, 700)
+        self.setGeometry(100, 100, 1920, 1080)
         self.setStyleSheet(self.load_stylesheet())
 
         self.serial_port = serial.Serial(port, baudrate, timeout=1)
@@ -66,7 +66,7 @@ class FloatDashboard(QWidget):
         self.pressure_plot.setBackground("#202020")
         self.pressure_curve = self.pressure_plot.plot(pen=pg.mkPen('#ff9900', width=2))
 
-        self.depth_plot = pg.PlotWidget(title="Live Depth Graph")
+        self.depth_plot = pg.PlotWidget(title="Live Altitude Graph")
         self.depth_plot.setBackground("#202020")
         self.depth_curve = self.depth_plot.plot(pen=pg.mkPen('#00aaff', width=2))
 
@@ -86,8 +86,8 @@ class FloatDashboard(QWidget):
         # Table layout
         table_title = QLabel("Live Data From Sensors")
         table_title.setStyleSheet("color: gray; font-size: 12px;")
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["Team ID", "Time", "Depth (m)", "Pressure (Pa)"])
+        self.table = QTableWidget(0, 5)
+        self.table.setHorizontalHeaderLabels(["Team ID", "Time", "Temperature (°C)", "Altitude (m)", "Pressure (Pa)"])
         self.table.setStyleSheet("background-color: #121212; color: white; border: 1px solid #2e2e2e;")
 
         # Combine layouts
@@ -105,7 +105,7 @@ class FloatDashboard(QWidget):
         self.team_id = "ROVTEAM001"
         self.x_data = []
         self.pressure_data = []
-        self.depth_data = []
+        self.altitude_data = []
         self.counter = 0
 
     def toggleTelemetry(self):
@@ -127,15 +127,28 @@ class FloatDashboard(QWidget):
     def read_serial(self):
         if self.serial_port.in_waiting:
             try:
-                line = self.serial_port.readline().decode('utf-8').strip()
+                line = self.serial_port.readline().decode('utf-8', errors='ignore').strip()
                 print("Received:", line)
 
-                match = re.search(r"T:\s*([\d.]+)\s*C\s*\|\s*P:\s*([\d.]+)\s*mbar\s*\|\s*Alt:\s*([\d.]+)", line)
-                if match:
-                    temp = float(match.group(1))
-                    pressure = float(match.group(2))
-                    altitude = float(match.group(3))
+                # First, remove "Received -> " if present
+                if line.startswith("Received -> "):
+                    line = line[len("Received -> "):]
 
+                # More flexible regex: allow float or "ovf"
+                match = re.search(
+                    r"T:\s*(ovf|[-\d.]+)\s*C\s*\|\s*P:\s*(ovf|[-\d.]+)\s*mbar\s*\|\s*Alt:\s*(ovf|[-\d.]+)",
+                    line
+                )
+
+                if match:
+                    # Extract values, convert "ovf" to 0.0 (or you can choose another default)
+                    temp_str, pressure_str, altitude_str = match.groups()
+
+                    temp = 0.0 if temp_str == "ovf" else float(temp_str)
+                    pressure = 0.0 if pressure_str == "ovf" else float(pressure_str)
+                    altitude = 0.0 if altitude_str == "ovf" else float(altitude_str)
+
+                    # Update labels
                     self.temp_label.setText(f"Temperature: {temp:.2f} °C")
                     self.pressure_label.setText(f"Pressure: {pressure:.2f} mbar")
                     self.altitude_label.setText(f"Altitude: {altitude:.2f} m")
@@ -144,22 +157,29 @@ class FloatDashboard(QWidget):
                     self.counter += 1
                     self.x_data.append(self.counter)
                     self.pressure_data.append(pressure)
-                    self.depth_data.append(altitude)
+                    self.altitude_data.append(altitude)
 
                     self.x_data = self.x_data[-50:]
                     self.pressure_data = self.pressure_data[-50:]
-                    self.depth_data = self.depth_data[-50:]
+                    self.altitude_data = self.altitude_data[-50:]
 
                     self.pressure_curve.setData(self.x_data, self.pressure_data)
-                    self.depth_curve.setData(self.x_data, self.depth_data)
+                    self.depth_curve.setData(self.x_data, self.altitude_data)
 
                     timestamp = datetime.now().strftime("%H:%M:%S")
                     row = self.table.rowCount()
                     self.table.insertRow(row)
                     self.table.setItem(row, 0, QTableWidgetItem(self.team_id))
                     self.table.setItem(row, 1, QTableWidgetItem(timestamp))
-                    self.table.setItem(row, 2, QTableWidgetItem(f"{altitude:.2f}"))
-                    self.table.setItem(row, 3, QTableWidgetItem(f"{pressure:.2f}"))
+                    self.table.setItem(row, 2, QTableWidgetItem(f"{temp:.2f}"))
+                    self.table.setItem(row, 3, QTableWidgetItem(f"{altitude:.2f}"))
+                    self.table.setItem(row, 4, QTableWidgetItem(f"{pressure:.2f}"))
+
+                    # Auto-scroll to last row
+                    self.table.scrollToBottom()
+
+                else:
+                    print("Line did not match expected format.")
 
             except Exception as e:
                 print("Error parsing serial data:", e)
