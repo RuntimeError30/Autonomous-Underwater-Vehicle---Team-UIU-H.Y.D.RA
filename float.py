@@ -1,5 +1,6 @@
 import sys
-import random
+import re
+import serial
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
@@ -11,12 +12,14 @@ from PyQt6.QtGui import QFont
 import pyqtgraph as pg
 
 
-class ModernROVDashboard(QWidget):
-    def __init__(self):
+class FloatDashboard(QWidget):
+    def __init__(self, port='/dev/ttyACM0', baudrate=9600):
         super().__init__()
         self.setWindowTitle("MATE FLOAT DASHBOARD")
         self.setGeometry(100, 100, 1200, 700)
         self.setStyleSheet(self.load_stylesheet())
+
+        self.serial_port = serial.Serial(port, baudrate, timeout=1)
 
         self.initUI()
         self.initData()
@@ -70,6 +73,16 @@ class ModernROVDashboard(QWidget):
         graph_layout.addWidget(self.pressure_plot)
         graph_layout.addWidget(self.depth_plot)
 
+        # Sensor value labels
+        sensor_layout = QHBoxLayout()
+        self.temp_label = QLabel("Temperature: -- °C")
+        self.pressure_label = QLabel("Pressure: -- mbar")
+        self.altitude_label = QLabel("Altitude: -- m")
+
+        for label in [self.temp_label, self.pressure_label, self.altitude_label]:
+            label.setStyleSheet("color: white; font-size: 14px;")
+            sensor_layout.addWidget(label)
+
         # Table layout
         table_title = QLabel("Live Data From Sensors")
         table_title.setStyleSheet("color: gray; font-size: 12px;")
@@ -80,6 +93,7 @@ class ModernROVDashboard(QWidget):
         # Combine layouts
         main_layout.addLayout(top_layout)
         main_layout.addLayout(graph_layout)
+        main_layout.addLayout(sensor_layout)
         main_layout.addWidget(table_title)
         main_layout.addWidget(self.table)
 
@@ -108,31 +122,47 @@ class ModernROVDashboard(QWidget):
         print("!!! EMERGENCY STOP ACTIVATED !!!")
 
     def updateTelemetry(self):
-        self.counter += 1
+        self.read_serial()
 
-        # Simulated values
-        pressure = random.uniform(100000, 110000)
-        depth = random.uniform(10, 50)
-        timestamp = datetime.now().strftime("%H:%M:%S")
+    def read_serial(self):
+        if self.serial_port.in_waiting:
+            try:
+                line = self.serial_port.readline().decode('utf-8').strip()
+                print("Received:", line)
 
-        self.x_data.append(self.counter)
-        self.pressure_data.append(pressure)
-        self.depth_data.append(depth)
+                match = re.search(r"T:\s*([\d.]+)\s*C\s*\|\s*P:\s*([\d.]+)\s*mbar\s*\|\s*Alt:\s*([\d.]+)", line)
+                if match:
+                    temp = float(match.group(1))
+                    pressure = float(match.group(2))
+                    altitude = float(match.group(3))
 
-        self.x_data = self.x_data[-50:]
-        self.pressure_data = self.pressure_data[-50:]
-        self.depth_data = self.depth_data[-50:]
+                    self.temp_label.setText(f"Temperature: {temp:.2f} °C")
+                    self.pressure_label.setText(f"Pressure: {pressure:.2f} mbar")
+                    self.altitude_label.setText(f"Altitude: {altitude:.2f} m")
 
-        self.pressure_curve.setData(self.x_data, self.pressure_data)
-        self.depth_curve.setData(self.x_data, self.depth_data)
+                    # Update graph and table
+                    self.counter += 1
+                    self.x_data.append(self.counter)
+                    self.pressure_data.append(pressure)
+                    self.depth_data.append(altitude)
 
-        # Update Table
-        row = self.table.rowCount()
-        self.table.insertRow(row)
-        self.table.setItem(row, 0, QTableWidgetItem(self.team_id))
-        self.table.setItem(row, 1, QTableWidgetItem(timestamp))
-        self.table.setItem(row, 2, QTableWidgetItem(f"{depth:.2f}"))
-        self.table.setItem(row, 3, QTableWidgetItem(f"{pressure:.2f}"))
+                    self.x_data = self.x_data[-50:]
+                    self.pressure_data = self.pressure_data[-50:]
+                    self.depth_data = self.depth_data[-50:]
+
+                    self.pressure_curve.setData(self.x_data, self.pressure_data)
+                    self.depth_curve.setData(self.x_data, self.depth_data)
+
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+                    row = self.table.rowCount()
+                    self.table.insertRow(row)
+                    self.table.setItem(row, 0, QTableWidgetItem(self.team_id))
+                    self.table.setItem(row, 1, QTableWidgetItem(timestamp))
+                    self.table.setItem(row, 2, QTableWidgetItem(f"{altitude:.2f}"))
+                    self.table.setItem(row, 3, QTableWidgetItem(f"{pressure:.2f}"))
+
+            except Exception as e:
+                print("Error parsing serial data:", e)
 
     def load_stylesheet(self):
         return """
@@ -180,6 +210,6 @@ class ModernROVDashboard(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = ModernROVDashboard()
+    window = FloatDashboard(port='/dev/ttyACM0')
     window.show()
     sys.exit(app.exec())

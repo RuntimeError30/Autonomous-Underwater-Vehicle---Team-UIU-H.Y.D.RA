@@ -596,75 +596,90 @@ class ControlPage(QWidget):
 
         commands = []
 
-        if axis_1 > 0.03:  # BACKWARD (was originally FORWARD)
+        # Forward/Backward (Axis 1): Forward = axis_1 < -0.03, Backward = axis_1 > 0.03
+        if axis_1 > 0.03:  # BACKWARD
             axis_1_abs = abs(axis_1)
-            thrust = int(1500 - (axis_1_abs * 450))  # Goes down to 1000
-            anti_thrust = int(1500 + (axis_1_abs * 450))  # Goes up to 2000
-            commands.append(f"rc 4 {thrust}")        # CW
-            commands.append(f"rc 5 {anti_thrust}")   # Inverted again
+            value = int(1500 + (axis_1_abs * 450))  # Goes up to 2000
+            reverse_value = int(1500 - (axis_1_abs * 450))  # Goes down to 1000
 
-        elif axis_1 < -0.03:  # FORWARD (was originally BACKWARD)
+            commands.append(f"rc 1 {reverse_value}")   # ACW -> backward (1 < 1500)
+            commands.append(f"rc 8 {value}")           # CW -> backward (8 > 1500)
+
+        elif axis_1 < -0.03:  # FORWARD
             axis_1_abs = abs(axis_1)
-            thrust = int(1500 + (axis_1_abs * 450))  # Goes up to 2000
-            anti_thrust = int(1500 - (axis_1_abs * 450))  # Goes down to 1000
-            commands.append(f"rc 4 {thrust}")        # This spins ACW as expected
-            commands.append(f"rc 5 {anti_thrust}")   # Inverted because it's mounted opposite
+            value = int(1500 + (axis_1_abs * 450))  # Goes up to 2000
+            reverse_value = int(1500 - (axis_1_abs * 450))  # Goes down to 1000
 
-        else:
-            # Neutral when joystick is centered
-            commands.append(f"rc 4 1500")
-            commands.append(f"rc 5 1500")
-
-        # Left/Right (Axis 0): Right = axis_0 > 0.03, Left = axis_0 < -0.03
-        if axis_0 > 0.03:  # RIGHT TURN
-            axis_0_abs = abs(axis_0)
-            power = int(1500 + (axis_0_abs * 500))  # Max 2000
-            reverse_power = int(1500 - (axis_0_abs * 500))  # Min 1000
-            commands.append(f"rc 1 {reverse_power}")  # Clockwise
-            commands.append(f"rc 8 {power}")          # Anti-clockwise
-
-        elif axis_0 < -0.03:  # LEFT TURN
-            axis_0_abs = abs(axis_0)
-            power = int(1500 + (axis_0_abs * 500))  # Max 2000
-            reverse_power = int(1500 - (axis_0_abs * 500))  # Min 1000
-            commands.append(f"rc 1 {power}")         # Anti-clockwise
-            commands.append(f"rc 8 {reverse_power}") # Clockwise
+            commands.append(f"rc 1 {value}")           # ACW -> forward (1 > 1500)
+            commands.append(f"rc 8 {reverse_value}")   # CW -> forward (8 < 1500)
 
         else:
             commands.append(f"rc 1 1500")
             commands.append(f"rc 8 1500")
 
-        MOTOR_NEUTRAL = 1500
-        MOTOR_MAX = 2000
-        MOTOR_MIN = 1000
+        # Left/Right (Axis 0): Right = axis_0 > 0.03, Left = axis_0 < -0.03
+        if axis_0 > 0.03:  # RIGHT
+            axis_0_abs = abs(axis_0)
+            value = int(1500 + (axis_0_abs * 450))  # Both rotate CW ( > 1500 )
+            value2 = int(1500 - (axis_0_abs * 450))
 
+            commands.append(f"rc 2 {value}")        # CW
+            commands.append(f"rc 5 {value2}")        # CW
 
+        elif axis_0 < -0.03:  # LEFT
+            axis_0_abs = abs(axis_0)
+            value = int(1500 + (axis_0_abs * 450))  # Both rotate CW ( > 1500 )
+            value2 = int(1500 - (axis_0_abs * 450))
 
+            commands.append(f"rc 2 {value2}")        # CW
+            commands.append(f"rc 5 {value}")        # CW
+
+        else:
+            commands.append(f"rc 2 1500")
+            commands.append(f"rc 5 1500")
+
+        # Up/Down (Axis 5): Down = axis_5 > 0.03, Up = axis_5 < -0.03
         if axis_5 > 0.03:  # DOWN
             axis_5_abs = abs(axis_5)
-            thrust = int(1500 - (axis_5_abs * 450))  # CCW
-            thrust2 = int(1500 + (axis_5_abs * 450)) # CW
+            value = int(1500 + (axis_5_abs * 450))  # > 1500
+            value2 = int(1500 - (axis_5_abs * 450))  # < 1500
 
-            commands.append(f"rc 2 {thrust2}")     # CCW
-            commands.append(f"rc 3 {thrust2}")    # CW
-            commands.append(f"rc 6 {thrust2}")     # CCW
-            commands.append(f"rc 7 {thrust}")     # CCW
+            commands.append(f"rc 3 {value}")      # ACW
+            commands.append(f"rc 4 {value}")        # ACW
+            commands.append(f"rc 6 {value2}")        # CW
+            commands.append(f"rc 7 {value2}")        # CW
 
         elif axis_5 < -0.03:  # UP
             axis_5_abs = abs(axis_5)
-            thrust = int(1500 + (axis_5_abs * 450))  # CW
-            thrust2 = int(1500 - (axis_5_abs * 450)) # CCW
+            value = int(1500 + (axis_5_abs * 450))  # > 1500
+            value2 = int(1500 - (axis_5_abs * 450))  # < 1500
 
-            commands.append(f"rc 2 {thrust2}")     # CW
-            commands.append(f"rc 3 {thrust2}")    # CCW
-            commands.append(f"rc 6 {thrust2}")     # CW
-            commands.append(f"rc 7 {thrust}")     # CW
+            commands.append(f"rc 3 {value2}")        # ACW
+            commands.append(f"rc 4 {value2}")        # ACW
+            commands.append(f"rc 6 {value}")        # CW
+            commands.append(f"rc 7 {value}")        # CW
 
         else:
-            commands.append(f"rc 2 {MOTOR_NEUTRAL}")
-            commands.append(f"rc 3 {MOTOR_NEUTRAL}")
-            commands.append(f"rc 6 {MOTOR_NEUTRAL}")
-            commands.append(f"rc 7 {MOTOR_NEUTRAL}")
+            commands.append(f"rc 3 1500")
+            commands.append(f"rc 4 1500")
+            commands.append(f"rc 6 1500")
+            commands.append(f"rc 7 1500")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         # Reset Hover
         if reset_button:
