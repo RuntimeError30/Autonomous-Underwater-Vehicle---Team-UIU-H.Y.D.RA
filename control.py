@@ -75,9 +75,20 @@ class ControlPage(QWidget):
         self.joystick_init()  # Initialize joystick
         self.timer = QTimer(self)  
         self.timer.timeout.connect(self.read_joystick)  
-        self.timer.start(50)  # Read joystick every 50ms
+        self.timer.start(100)  # Read joystick every 50ms
         self.last_command_time = 0
         self.command_delay = 0.1 
+        self.joystick_ready_time = time.time() + 1.5
+
+
+
+        self.mav_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            self.mav_socket.connect(("10.42.0.185", 7000))
+            print("✅ Connected to MAVProxy server")
+        except Exception as e:
+            print(f"❌ Could not connect to MAVProxy server: {e}")
+
 
 
     def init_ui(self):
@@ -499,17 +510,12 @@ class ControlPage(QWidget):
 
 
     def send_command(self, command):
-        """Send command to Raspberry Pi MAVProxy server"""
-        HOST = "10.42.0.185"  # Change if necessary
-        PORT = 7000
-
         try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client_socket:
-                client_socket.connect((HOST, PORT))
-                client_socket.sendall(command.encode())
-                print(f"Sent: {command}")
+            self.mav_socket.sendall((command + "\n").encode())
+            print(f"Sent: {command}")
         except Exception as e:
-            print(f"Error sending command: {e}")
+            print(f"❌ Failed to send command: {e}")
+
 
     def keyPressEvent(self, event: QKeyEvent):
         """Handle keyboard input"""
@@ -535,49 +541,52 @@ class ControlPage(QWidget):
             self.reset_commands()
 
             
-    def joystick_init(self):
-        """Initialize only the Zikway HID gamepad"""
-        pygame.init()
-        pygame.joystick.init()
-        
-        found = False
-        for i in range(pygame.joystick.get_count()):
-            joystick = pygame.joystick.Joystick(i)
-            joystick.init()
-            name = joystick.get_name()
-            print(f"Detected joystick: {name}")
-            
-            if "Zikway" in name:
-                self.joystick = joystick
-                found = True
-                print("✅ Zikway Gamepad Connected!")
-                break
-            else:
-                joystick.quit()  # optional: release non-Zikway joystick
-
-        if not found:
-            self.joystick = None
-            print("❌ Zikway Gamepad Not Found!")
-
-
-
     # def joystick_init(self):
-    #     """Initialize joystick"""
+    #     """Initialize only the Zikway HID gamepad"""
     #     pygame.init()
     #     pygame.joystick.init()
-    #     if pygame.joystick.get_count() > 0:
-    #         self.joystick = pygame.joystick.Joystick(0)
-    #         self.joystick.init()
-    #         print("Joystick Connected!")
-    #     else:
+        
+    #     found = False
+    #     for i in range(pygame.joystick.get_count()):
+    #         joystick = pygame.joystick.Joystick(i)
+    #         joystick.init()
+    #         name = joystick.get_name()
+    #         print(f"Detected joystick: {name}")
+            
+    #         if "Zikway" in name:
+    #             self.joystick = joystick
+    #             found = True
+    #             print("✅ Zikway Gamepad Connected!")
+    #             break
+    #         else:
+    #             joystick.quit()  # optional: release non-Zikway joystick
+
+    #     if not found:
     #         self.joystick = None
-    #         print("No Joystick Found!")
+    #         print("❌ Zikway Gamepad Not Found!")
+
+
+
+    def joystick_init(self):
+        """Initialize joystick"""
+        pygame.init()
+        pygame.joystick.init()
+        if pygame.joystick.get_count() > 0:
+            self.joystick = pygame.joystick.Joystick(0)
+            self.joystick.init()
+            print("Joystick Connected!")
+        else:
+            self.joystick = None
+            print("No Joystick Found!")
 
 
 
     def read_joystick(self):
         """Read joystick input and send appropriate RC commands"""
         if not self.joystick:
+            return
+
+        if time.time() < self.joystick_ready_time:
             return
 
         pygame.event.pump()
