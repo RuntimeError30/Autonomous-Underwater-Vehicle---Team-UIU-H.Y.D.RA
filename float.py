@@ -1,6 +1,7 @@
 import sys
 import re
 import serial
+from serial import SerialException
 from datetime import datetime
 
 from PyQt6.QtWidgets import (
@@ -19,10 +20,18 @@ class FloatDashboard(QWidget):
         self.setGeometry(100, 100, 1920, 1080)
         self.setStyleSheet(self.load_stylesheet())
 
-        self.serial_port = serial.Serial(port, baudrate, timeout=1)
+        self.port_name = port
+        self.baudrate = baudrate
+        self.serial_port = None
+        self.serial_connected = False
 
         self.initUI()
         self.initData()
+
+        # Start connection checker timer
+        self.connection_timer = QTimer()
+        self.connection_timer.timeout.connect(self.checkSerialConnection)
+        self.connection_timer.start(1000)  # Check every 1 second
 
     def initUI(self):
         main_layout = QVBoxLayout(self)
@@ -46,13 +55,16 @@ class FloatDashboard(QWidget):
         comm_status_layout = QVBoxLayout(comm_status)
         stat_title = QLabel("FLOAT COMMUNICATION STATUS")
         stat_title.setStyleSheet("color: gray; font-size: 10px;")
-        stat_label = QLabel("CONNECTED")
-        stat_label.setStyleSheet("color: #ff9900; font-size: 16px;")
-        ip_label = QLabel("IP ADDRESS: 192.168.2.3")
-        ip_label.setStyleSheet("color: gray; font-size: 10px;")
+
+        self.stat_label = QLabel("DISCONNECTED")
+        self.stat_label.setStyleSheet("color: red; font-size: 16px;")
+
+        self.ip_label = QLabel("NO SERIAL PORT")
+        self.ip_label.setStyleSheet("color: gray; font-size: 10px;")
+
         comm_status_layout.addWidget(stat_title)
-        comm_status_layout.addWidget(stat_label)
-        comm_status_layout.addWidget(ip_label)
+        comm_status_layout.addWidget(self.stat_label)
+        comm_status_layout.addWidget(self.ip_label)
 
         top_layout.addWidget(title)
         top_layout.addStretch()
@@ -97,12 +109,12 @@ class FloatDashboard(QWidget):
         main_layout.addWidget(table_title)
         main_layout.addWidget(self.table)
 
-        # Timer
+        # Timer for telemetry
         self.timer = QTimer()
         self.timer.timeout.connect(self.updateTelemetry)
 
     def initData(self):
-        self.team_id = "ROVTEAM001"
+        self.team_id = "PN06"
         self.x_data = []
         self.pressure_data = []
         self.altitude_data = []
@@ -125,35 +137,30 @@ class FloatDashboard(QWidget):
         self.read_serial()
 
     def read_serial(self):
-        if self.serial_port.in_waiting:
+        if self.serial_port and self.serial_port.is_open and self.serial_port.in_waiting:
             try:
                 line = self.serial_port.readline().decode('utf-8', errors='ignore').strip()
                 print("Received:", line)
 
-                # First, remove "Received -> " if present
                 if line.startswith("Received -> "):
                     line = line[len("Received -> "):]
 
-                # More flexible regex: allow float or "ovf"
                 match = re.search(
                     r"T:\s*(ovf|[-\d.]+)\s*C\s*\|\s*P:\s*(ovf|[-\d.]+)\s*mbar\s*\|\s*Alt:\s*(ovf|[-\d.]+)",
                     line
                 )
 
                 if match:
-                    # Extract values, convert "ovf" to 0.0 (or you can choose another default)
                     temp_str, pressure_str, altitude_str = match.groups()
 
                     temp = 0.0 if temp_str == "ovf" else float(temp_str)
                     pressure = 0.0 if pressure_str == "ovf" else float(pressure_str)
                     altitude = 0.0 if altitude_str == "ovf" else float(altitude_str)
 
-                    # Update labels
                     self.temp_label.setText(f"Temperature: {temp:.2f} °C")
                     self.pressure_label.setText(f"Pressure: {pressure:.2f} mbar")
                     self.altitude_label.setText(f"Altitude: {altitude:.2f} m")
 
-                    # Update graph and table
                     self.counter += 1
                     self.x_data.append(self.counter)
                     self.pressure_data.append(pressure)
@@ -175,7 +182,6 @@ class FloatDashboard(QWidget):
                     self.table.setItem(row, 3, QTableWidgetItem(f"{altitude:.2f}"))
                     self.table.setItem(row, 4, QTableWidgetItem(f"{pressure:.2f}"))
 
-                    # Auto-scroll to last row
                     self.table.scrollToBottom()
 
                 else:
@@ -183,6 +189,26 @@ class FloatDashboard(QWidget):
 
             except Exception as e:
                 print("Error parsing serial data:", e)
+
+    def checkSerialConnection(self):
+        if self.serial_port is None or not self.serial_port.is_open:
+            try:
+                self.serial_port = serial.Serial(self.port_name, self.baudrate, timeout=1)
+                self.serial_connected = True
+                print("Serial connected.")
+            except SerialException:
+                self.serial_port = None
+                self.serial_connected = False
+
+        # Update status label
+        if self.serial_connected:
+            self.stat_label.setText("CONNECTED")
+            self.stat_label.setStyleSheet("color: #ff9900; font-size: 16px;")
+            self.ip_label.setText(f"CONNECTED TO: {self.serial_port.port}")
+        else:
+            self.stat_label.setText("DISCONNECTED")
+            self.stat_label.setStyleSheet("color: red; font-size: 16px;")
+            self.ip_label.setText("NO SERIAL PORT")
 
     def load_stylesheet(self):
         return """
@@ -233,3 +259,4 @@ if __name__ == "__main__":
     window = FloatDashboard(port='/dev/ttyACM0')
     window.show()
     sys.exit(app.exec())
+
