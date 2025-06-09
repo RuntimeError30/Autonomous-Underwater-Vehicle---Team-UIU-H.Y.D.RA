@@ -142,11 +142,8 @@ class FloatDashboard(QWidget):
                 line = self.serial_port.readline().decode('utf-8', errors='ignore').strip()
                 print("Received:", line)
 
-                if line.startswith("Received -> "):
-                    line = line[len("Received -> "):]
-
                 match = re.search(
-                    r"T:\s*(ovf|[-\d.]+)\s*C\s*\|\s*P:\s*(ovf|[-\d.]+)\s*mbar\s*\|\s*Alt:\s*(ovf|[-\d.]+)",
+                    r"Temp:\s*(ovf|[-\d.]+)\s*°C\s*\|\s*Pressure:\s*(ovf|[-\d.]+)\s*mbar\s*\|\s*Alt:\s*(ovf|[-\d.]+)",
                     line
                 )
 
