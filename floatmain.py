@@ -1,3 +1,4 @@
+
 import sys
 import re
 import serial
@@ -29,7 +30,7 @@ class FloatDashboard(QWidget):
         self.dive_index = -1
         self.dive_data = []
         self.graph_tabs = QTabWidget()
-        self.line_counter = 0  # to count lines per dive
+        self.line_counter = 0
 
         self.initUI()
         self.initData()
@@ -41,7 +42,6 @@ class FloatDashboard(QWidget):
     def initUI(self):
         main_layout = QVBoxLayout(self)
 
-        # Top bar
         top_layout = QHBoxLayout()
         title = QLabel("MATE FLOAT DASHBOARD")
         title.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
@@ -77,7 +77,6 @@ class FloatDashboard(QWidget):
         main_layout.addLayout(top_layout)
         main_layout.addWidget(self.graph_tabs)
 
-        # Sensor values
         sensor_layout = QHBoxLayout()
         self.temp_label = QLabel("Temperature: -- °C")
         self.pressure_label = QLabel("Pressure: -- mbar")
@@ -87,7 +86,6 @@ class FloatDashboard(QWidget):
             label.setStyleSheet("color: white; font-size: 14px;")
             sensor_layout.addWidget(label)
 
-        # Table layout
         table_title = QLabel("Live Data From Sensors")
         table_title.setStyleSheet("color: gray; font-size: 12px;")
         self.table = QTableWidget(0, 5)
@@ -130,21 +128,20 @@ class FloatDashboard(QWidget):
                     print("Received:", line)
 
                     match = re.search(
-                        r"Temp:\s*(ovf|[-\d.]+)\s*°C\s*\|\s*Pressure:\s*(ovf|[-\d.]+)\s*mbar\s*\|\s*Alt:\s*(ovf|[-\d.]+)",
+                        r"Time:\s*(\d+)\s*s\s*\|\s*Temp:\s*([-+]?[0-9]*\.?[0-9]+)\s*°C\s*\|\s*Pressure:\s*([-+]?[0-9]*\.?[0-9]+)\s*mbar\s*\|\s*Alt:\s*([-+]?[0-9]*\.?[0-9]+)",
                         line
                     )
 
                     if match:
-                        temp_str, pressure_str, altitude_str = match.groups()
-                        temp = 0.0 if temp_str == "ovf" else float(temp_str)
-                        pressure = 0.0 if pressure_str == "ovf" else float(pressure_str)
-                        altitude = 0.0 if altitude_str == "ovf" else float(altitude_str)
+                        _, temp_str, pressure_str, altitude_str = match.groups()
+                        temp = float(temp_str)
+                        pressure = float(pressure_str)
+                        altitude = float(altitude_str)
 
                         self.temp_label.setText(f"Temperature: {temp:.2f} °C")
                         self.pressure_label.setText(f"Pressure: {pressure:.2f} mbar")
                         self.altitude_label.setText(f"Altitude: {altitude:.2f} m")
 
-                        # Update live data list
                         self.line_counter += 1
                         self.current_dive["x"].append(self.line_counter)
                         self.current_dive["p"].append(pressure)
@@ -160,7 +157,6 @@ class FloatDashboard(QWidget):
                         self.table.setItem(row, 4, QTableWidgetItem(f"{pressure:.2f}"))
                         self.table.scrollToBottom()
 
-                        # When 45 data points are reached:
                         if self.line_counter == 45:
                             self.saveDiveToCSV()
                             self.addGraphTab()

@@ -3,15 +3,14 @@ import re
 import serial
 from serial import SerialException
 from datetime import datetime
+
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
-    QVBoxLayout, QHBoxLayout, QFrame, QTabWidget
+    QVBoxLayout, QHBoxLayout, QFrame
 )
-from PyQt6.QtCore import QTimer
+from PyQt6.QtCore import QTimer, Qt
 from PyQt6.QtGui import QFont
 import pyqtgraph as pg
-import csv
-import os
 
 
 class FloatDashboard(QWidget):
@@ -26,22 +25,18 @@ class FloatDashboard(QWidget):
         self.serial_port = None
         self.serial_connected = False
 
-        self.dive_index = -1
-        self.dive_data = []
-        self.graph_tabs = QTabWidget()
-        self.line_counter = 0  # to count lines per dive
-
         self.initUI()
         self.initData()
 
+        # Start connection checker timer
         self.connection_timer = QTimer()
         self.connection_timer.timeout.connect(self.checkSerialConnection)
-        self.connection_timer.start(1000)
+        self.connection_timer.start(1000)  # Check every 1 second
 
     def initUI(self):
         main_layout = QVBoxLayout(self)
 
-        # Top bar
+        # Top bar layout
         top_layout = QHBoxLayout()
         title = QLabel("MATE FLOAT DASHBOARD")
         title.setFont(QFont("Segoe UI", 18, QFont.Weight.Bold))
@@ -58,12 +53,15 @@ class FloatDashboard(QWidget):
         comm_status = QFrame()
         comm_status.setObjectName("statusFrame")
         comm_status_layout = QVBoxLayout(comm_status)
-        stat_title = QLabel("FLOAT COMM STATUS")
+        stat_title = QLabel("FLOAT COMMUNICATION STATUS")
         stat_title.setStyleSheet("color: gray; font-size: 10px;")
+
         self.stat_label = QLabel("DISCONNECTED")
         self.stat_label.setStyleSheet("color: red; font-size: 16px;")
+
         self.ip_label = QLabel("NO SERIAL PORT")
         self.ip_label.setStyleSheet("color: gray; font-size: 10px;")
+
         comm_status_layout.addWidget(stat_title)
         comm_status_layout.addWidget(self.stat_label)
         comm_status_layout.addWidget(self.ip_label)
@@ -74,10 +72,20 @@ class FloatDashboard(QWidget):
         top_layout.addWidget(self.emergency_button)
         top_layout.addWidget(comm_status)
 
-        main_layout.addLayout(top_layout)
-        main_layout.addWidget(self.graph_tabs)
+        # Graph layout
+        graph_layout = QHBoxLayout()
+        self.pressure_plot = pg.PlotWidget(title="Live Pressure Graph")
+        self.pressure_plot.setBackground("#202020")
+        self.pressure_curve = self.pressure_plot.plot(pen=pg.mkPen('#ff9900', width=2))
 
-        # Sensor values
+        self.depth_plot = pg.PlotWidget(title="Live Altitude Graph")
+        self.depth_plot.setBackground("#202020")
+        self.depth_curve = self.depth_plot.plot(pen=pg.mkPen('#00aaff', width=2))
+
+        graph_layout.addWidget(self.pressure_plot)
+        graph_layout.addWidget(self.depth_plot)
+
+        # Sensor value labels
         sensor_layout = QHBoxLayout()
         self.temp_label = QLabel("Temperature: -- °C")
         self.pressure_label = QLabel("Pressure: -- mbar")
@@ -91,20 +99,26 @@ class FloatDashboard(QWidget):
         table_title = QLabel("Live Data From Sensors")
         table_title.setStyleSheet("color: gray; font-size: 12px;")
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Team ID", "Time", "Temp (°C)", "Altitude (m)", "Pressure (Pa)"])
+        self.table.setHorizontalHeaderLabels(["Team ID", "Time", "Temperature (°C)", "Altitude (m)", "Pressure (Pa)"])
         self.table.setStyleSheet("background-color: #121212; color: white; border: 1px solid #2e2e2e;")
 
+        # Combine layouts
+        main_layout.addLayout(top_layout)
+        main_layout.addLayout(graph_layout)
         main_layout.addLayout(sensor_layout)
         main_layout.addWidget(table_title)
         main_layout.addWidget(self.table)
 
+        # Timer for telemetry
         self.timer = QTimer()
         self.timer.timeout.connect(self.updateTelemetry)
 
     def initData(self):
         self.team_id = "PN06"
-        self.line_counter = 0
-        self.current_dive = {"x": [], "p": [], "a": []}
+        self.x_data = []
+        self.pressure_data = []
+        self.altitude_data = []
+        self.counter = 0
 
     def toggleTelemetry(self):
         if self.timer.isActive():
@@ -117,99 +131,85 @@ class FloatDashboard(QWidget):
     def emergencyStop(self):
         self.timer.stop()
         self.telemetry_button.setText("START TELEMETRY")
-        print("!!! EMERGENCY STOP !!!")
+        print("!!! EMERGENCY STOP ACTIVATED !!!")
 
     def updateTelemetry(self):
         self.read_serial()
 
     def read_serial(self):
-        if self.serial_port and self.serial_port.is_open:
+        if self.serial_port and self.serial_port.is_open and self.serial_port.in_waiting:
             try:
-                while self.serial_port.in_waiting:
-                    line = self.serial_port.readline().decode('utf-8', errors='ignore').strip()
-                    print("Received:", line)
+                line = self.serial_port.readline().decode('utf-8', errors='ignore').strip()
+                print("Received:", line)
 
-                    match = re.search(
-                        r"Temp:\s*(ovf|[-\d.]+)\s*°C\s*\|\s*Pressure:\s*(ovf|[-\d.]+)\s*mbar\s*\|\s*Alt:\s*(ovf|[-\d.]+)",
-                        line
-                    )
+                match = re.search(
+                    r"Temp:\s*(ovf|[-\d.]+)\s*°C\s*\|\s*Pressure:\s*(ovf|[-\d.]+)\s*mbar\s*\|\s*Alt:\s*(ovf|[-\d.]+)",
+                    line
+                )
 
-                    if match:
-                        temp_str, pressure_str, altitude_str = match.groups()
-                        temp = 0.0 if temp_str == "ovf" else float(temp_str)
-                        pressure = 0.0 if pressure_str == "ovf" else float(pressure_str)
-                        altitude = 0.0 if altitude_str == "ovf" else float(altitude_str)
+                if match:
+                    temp_str, pressure_str, altitude_str = match.groups()
 
-                        self.temp_label.setText(f"Temperature: {temp:.2f} °C")
-                        self.pressure_label.setText(f"Pressure: {pressure:.2f} mbar")
-                        self.altitude_label.setText(f"Altitude: {altitude:.2f} m")
+                    temp = 0.0 if temp_str == "ovf" else float(temp_str)
+                    pressure = 0.0 if pressure_str == "ovf" else float(pressure_str)
+                    altitude = 0.0 if altitude_str == "ovf" else float(altitude_str)
 
-                        # Update live data list
-                        self.line_counter += 1
-                        self.current_dive["x"].append(self.line_counter)
-                        self.current_dive["p"].append(pressure)
-                        self.current_dive["a"].append(altitude)
+                    self.temp_label.setText(f"Temperature: {temp:.2f} °C")
+                    self.pressure_label.setText(f"Pressure: {pressure:.2f} mbar")
+                    self.altitude_label.setText(f"Altitude: {altitude:.2f} m")
 
-                        timestamp = datetime.now().strftime("%H:%M:%S")
-                        row = self.table.rowCount()
-                        self.table.insertRow(row)
-                        self.table.setItem(row, 0, QTableWidgetItem(self.team_id))
-                        self.table.setItem(row, 1, QTableWidgetItem(timestamp))
-                        self.table.setItem(row, 2, QTableWidgetItem(f"{temp:.2f}"))
-                        self.table.setItem(row, 3, QTableWidgetItem(f"{altitude:.2f}"))
-                        self.table.setItem(row, 4, QTableWidgetItem(f"{pressure:.2f}"))
-                        self.table.scrollToBottom()
+                    self.counter += 1
+                    self.x_data.append(self.counter)
+                    self.pressure_data.append(pressure)
+                    self.altitude_data.append(altitude)
 
-                        # When 45 data points are reached:
-                        if self.line_counter == 45:
-                            self.saveDiveToCSV()
-                            self.addGraphTab()
-                            self.resetDiveData()
+                    self.x_data = self.x_data[-50:]
+                    self.pressure_data = self.pressure_data[-50:]
+                    self.altitude_data = self.altitude_data[-50:]
+
+                    self.pressure_curve.setData(self.x_data, self.pressure_data)
+                    self.depth_curve.setData(self.x_data, self.altitude_data)
+
+                    timestamp = datetime.now().strftime("%H:%M:%S")
+                    row = self.table.rowCount()
+                    self.table.insertRow(row)
+                    self.table.setItem(row, 0, QTableWidgetItem(self.team_id))
+                    self.table.setItem(row, 1, QTableWidgetItem(timestamp))
+                    self.table.setItem(row, 2, QTableWidgetItem(f"{temp:.2f}"))
+                    self.table.setItem(row, 3, QTableWidgetItem(f"{altitude:.2f}"))
+                    self.table.setItem(row, 4, QTableWidgetItem(f"{pressure:.2f}"))
+
+                    self.table.scrollToBottom()
+
+                else:
+                    print("Line did not match expected format.")
 
             except Exception as e:
                 print("Error parsing serial data:", e)
-
-    def saveDiveToCSV(self):
-        filename = f"dive_{self.dive_index + 2}.csv"
-        try:
-            with open(filename, "w", newline="") as f:
-                writer = csv.writer(f)
-                writer.writerow(["Time Index", "Pressure (mbar)", "Altitude (m)"])
-                for i in range(len(self.current_dive["x"])):
-                    writer.writerow([self.current_dive["x"][i], self.current_dive["p"][i], self.current_dive["a"][i]])
-            print(f"Saved: {filename}")
-        except Exception as e:
-            print("CSV save error:", e)
-
-    def addGraphTab(self):
-        self.dive_index += 1
-        plot_widget = pg.PlotWidget(title=f"Dive {self.dive_index + 1}")
-        plot_widget.setBackground("#202020")
-        plot_widget.plot(self.current_dive["x"], self.current_dive["p"], pen=pg.mkPen('#ff9900', width=2), name="Pressure")
-        plot_widget.plot(self.current_dive["x"], self.current_dive["a"], pen=pg.mkPen('#00aaff', width=2), name="Altitude")
-        self.graph_tabs.addTab(plot_widget, f"Dive {self.dive_index + 1}")
-
-    def resetDiveData(self):
-        self.line_counter = 0
-        self.current_dive = {"x": [], "p": [], "a": []}
-        self.table.setRowCount(0)
 
     def checkSerialConnection(self):
         if self.serial_port is None or not self.serial_port.is_open:
             try:
                 self.serial_port = serial.Serial(self.port_name, self.baudrate, timeout=1)
+                self.serial_connected = True
                 print("Serial connected.")
-            except SerialException:
+            except SerialException as e:
+                print("SerialException:", e)
                 self.serial_port = None
+                self.serial_connected = False
 
+        # Update status label
         if self.serial_port and self.serial_port.is_open:
+            self.serial_connected = True
             self.stat_label.setText("CONNECTED")
             self.stat_label.setStyleSheet("color: #ff9900; font-size: 16px;")
             self.ip_label.setText(f"CONNECTED TO: {self.serial_port.port}")
         else:
+            self.serial_connected = False
             self.stat_label.setText("DISCONNECTED")
             self.stat_label.setStyleSheet("color: red; font-size: 16px;")
             self.ip_label.setText("NO SERIAL PORT")
+
 
     def load_stylesheet(self):
         return """
@@ -257,6 +257,6 @@ class FloatDashboard(QWidget):
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = FloatDashboard()
+    window = FloatDashboard(port='/dev/ttyACM0')
     window.show()
     sys.exit(app.exec())
